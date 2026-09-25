@@ -1,0 +1,5 @@
+{
+  "min_confidence": 0.60,
+  "confidence_diff_tight_band": 0.05,
+  "confidence_diff_wide_band": 0.15
+}
