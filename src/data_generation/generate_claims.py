@@ -88,7 +88,11 @@ def generate_valid_claim(claim_idx: int) -> dict:
 
     margin_days = int(np.random.exponential(scale=120))
     margin_days = min(margin_days, max((warranty_end - purchase_date).days - 15, 15))
-    claim_date = warranty_end - timedelta(days=max(margin_days, 1))
+    # Floor raised from 1 to 20 days: Valid claims should not crowd into the
+    # near-zero boundary zone that Manual Review's "borderline_warranty"
+    # cases deliberately occupy - that overlap was unintentional, not the
+    # designed kind, and was confusing the model without adding real ambiguity.
+    claim_date = warranty_end - timedelta(days=max(margin_days, 20))
     claim_date = max(claim_date, purchase_date + timedelta(days=10))
 
     rec = _base_record(claim_idx, purchase_date, warranty_months, claim_date)
@@ -125,7 +129,10 @@ def generate_invalid_claim(claim_idx: int) -> dict:
     docs = DOC_TYPES.copy()
 
     if "expired" in active_reasons:
-        overdue_days = int(np.random.exponential(scale=90)) + 1
+        # Floor raised from 1 to 15 days overdue: keeps clearly-expired
+        # Invalid claims from crowding into Manual Review's borderline zone
+        # on the negative side, same reasoning as the Valid-side fix above.
+        overdue_days = int(np.random.exponential(scale=90)) + 15
         claim_date = warranty_end + timedelta(days=overdue_days)
     else:
         claim_date = _random_date(purchase_date + timedelta(days=10), warranty_end)
@@ -223,7 +230,15 @@ def generate_dataset(n_per_class: int = 500) -> pd.DataFrame:
         records.append(generate_invalid_claim(idx)); idx += 1
     for _ in range(n_per_class):
         records.append(generate_manual_review_claim(idx)); idx += 1
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+
+    # Derived features giving the model direct signal for ambiguity that
+    # was previously only implicit in raw counts/dates.
+    df["warranty_boundary_proximity"] = df["remaining_warranty_days"].abs()
+    df["has_partial_documents"] = df["missing_document_count"].apply(
+        lambda x: 1 if 0 < x < len(DOC_TYPES) else 0
+    )
+    return df
 
 
 def exact_stratified_split(df: pd.DataFrame, train_frac=0.70, val_frac=0.15) -> pd.DataFrame:

@@ -22,6 +22,7 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 NUMERIC_FEATURES = [
     "purchase_price", "warranty_duration_months", "product_age_days",
     "remaining_warranty_days", "repair_history_count", "missing_document_count",
+    "warranty_boundary_proximity", "has_partial_documents",
 ]
 CATEGORICAL_FEATURES = [
     "category", "brand", "retailer", "fault_type",
@@ -66,7 +67,9 @@ if __name__ == "__main__":
     candidates = {
         "LogisticRegression": LogisticRegression(max_iter=5000),
         "RandomForest": RandomForestClassifier(n_estimators=300, random_state=42),
-        "GradientBoosting": GradientBoostingClassifier(random_state=42),
+        "GradientBoosting": GradientBoostingClassifier(
+            n_estimators=800, max_depth=1, learning_rate=0.05, random_state=42
+        ),
     }
 
     best_name, best_pipeline, best_val_acc = None, None, -1.0
