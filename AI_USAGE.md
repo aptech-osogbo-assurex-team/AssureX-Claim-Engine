@@ -18,3 +18,15 @@
                             |                                       |diagnosed the actual cause (Valid/Invalid claims crowding into Manual Review's boundary zone)
                             |                                       |& fixed the generation logic directly; confirmed 87.11% test accuracy on my own machine,
                             |                                       |A meeting the 85% target
+
+
+
+
+|           |               |src/data_generation/generate_claims.py;|Review found the contradiction flags did not match the actual dates, 
+|2026-09-28 |Claude        data/claims.csv & model/classifier.joblib|(76 rows flagged claim-before-purchasewith none actually so; 
+|           |               |                                       |repair flag had no repair date column). 
+|           |               |                                       |Corrected generator derives both flags from real dates and adds a repair_date column.
+|           |               |                                       |I re-ran generation and training myself;
+|           |               |                                       | confirmed 350/75/75 split, flags match dates, and test accuracy of Test accuracy: 0.9289, 
+                                                                    | Test accuracy: 92.89% 
+|           |               |                                       | Meeting the 85% target

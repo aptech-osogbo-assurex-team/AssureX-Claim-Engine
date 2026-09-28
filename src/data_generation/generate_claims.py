@@ -81,6 +81,29 @@ def _base_record(claim_idx: int, purchase_date: date, warranty_months: int,
     }
 
 
+
+def _finalize(rec: dict) -> dict:
+    """Attach repair_date and derive both contradiction flags from real dates,
+    so every flag in the CSV is verifiable against the date columns."""
+    purchase = date.fromisoformat(rec["purchase_date"])
+    claim = date.fromisoformat(rec["claim_date"])
+    repair_before_purchase_intended = bool(rec["repair_date_before_purchase"])
+
+    if repair_before_purchase_intended:
+        repair = purchase - timedelta(days=random.randint(1, 90))
+        rec["repair_history_count"] = max(rec["repair_history_count"], 1)
+    elif rec["repair_history_count"] > 0 and claim > purchase + timedelta(days=2):
+        repair = _random_date(purchase + timedelta(days=1), claim)
+    else:
+        repair = None
+        rec["repair_history_count"] = 0  # no valid repair window exists
+
+    rec["repair_date"] = repair.isoformat() if repair else ""
+    rec["repair_date_before_purchase"] = bool(repair and repair < purchase)
+    rec["claim_date_before_purchase"] = claim < purchase
+    return rec
+
+
 def generate_valid_claim(claim_idx: int) -> dict:
     purchase_date = _random_date(date(2022, 1, 1), date(2025, 6, 1))
     warranty_months = _weighted_choice([12, 18, 24, 36], [0.35, 0.20, 0.30, 0.15])
@@ -147,6 +170,9 @@ def generate_invalid_claim(claim_idx: int) -> dict:
             claim_date_before_purchase = True
         else:
             repair_date_before_purchase = True
+
+    if claim_date_before_purchase:
+        claim_date = purchase_date - timedelta(days=random.randint(1, 90))
 
     rec = _base_record(claim_idx, purchase_date, warranty_months, claim_date)
     entered_serial = (rec["serial_number"] if serial_match
@@ -225,11 +251,11 @@ def generate_dataset(n_per_class: int = 500) -> pd.DataFrame:
     records = []
     idx = 1
     for _ in range(n_per_class):
-        records.append(generate_valid_claim(idx)); idx += 1
+        records.append(_finalize(generate_valid_claim(idx))); idx += 1
     for _ in range(n_per_class):
-        records.append(generate_invalid_claim(idx)); idx += 1
+        records.append(_finalize(generate_invalid_claim(idx))); idx += 1
     for _ in range(n_per_class):
-        records.append(generate_manual_review_claim(idx)); idx += 1
+        records.append(_finalize(generate_manual_review_claim(idx))); idx += 1
     df = pd.DataFrame(records)
 
     # Derived features giving the model direct signal for ambiguity that
