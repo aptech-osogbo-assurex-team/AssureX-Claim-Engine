@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ project_title }}</title>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f5f7; color: #1f2937; }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
+    h1 { margin-bottom: 6px; }
+    .muted { color: #6b7280; }
+    .panel { background: white; border: 1px solid #d1d5db; border-radius: 10px; padding: 20px; margin-top: 20px; }
+    textarea, input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 6px; }
+    textarea { min-height: 360px; font-family: Consolas, monospace; font-size: 13px; }
+    button { padding: 10px 16px; border: 0; border-radius: 6px; background: #111827; color: white; cursor: pointer; margin: 10px 8px 0 0; }
+    button.secondary { background: #4b5563; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    img { max-width: 100%; border: 1px solid #d1d5db; border-radius: 8px; background: white; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #111827; color: #f9fafb; padding: 14px; border-radius: 6px; }
+    .status { margin-top: 10px; padding: 10px; border-radius: 6px; background: #eef2ff; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>{{ project_title }}</h1>
+  <p class="muted">Evidence → Claim Summary Card → Teachable Machine → Python ML + rules → final decision.</p>
+
+  <div class="panel">
+    <h2>1. Sign in</h2>
+    <label for="email"><strong>Email</strong></label>
+    <input id="email" type="email" placeholder="you@example.com">
+    <label for="password"><strong>Password</strong></label>
+    <input id="password" type="password" placeholder="At least 8 characters">
+    <button id="register" class="secondary">Register</button>
+    <button id="login">Login</button>
+    <div id="authStatus" class="status">Not authenticated.</div>
+
+    <h2>2. Evaluate a claim</h2>
+    <label for="tmModelUrl"><strong>Teachable Machine model base URL</strong></label>
+    <input id="tmModelUrl" value="{{ default_tm_model_url }}" placeholder="/static/teachable_machine/ or https://.../">
+    <p class="muted">The directory must contain <code>model.json</code> and <code>metadata.json</code> from the independently trained Teachable Machine image model.</p>
+
+    <label for="claimJson"><strong>Claim JSON</strong></label>
+    <textarea id="claimJson"></textarea>
+    <button id="loadDemo" class="secondary">Load demo claim</button>
+    <button id="run" disabled>Run Claim Evaluation</button>
+    <div id="status" class="status">Load a claim, then run evaluation.</div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Claim Summary Card</h2>
+      <img id="cardImage" alt="Claim Summary Card preview">
+      <pre id="cardData">No card generated yet.</pre>
+    </div>
+    <div class="panel">
+      <h2>Final Decision</h2>
+      <pre id="decision">No evaluation yet.</pre>
+    </div>
+  </div>
+</main>
+
+<script>
+let accessToken = "";
+let currentUserId = "";
+
+function authHeaders() {
+  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+}
+
+async function authRequest(url, payload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.detail || `Request failed: ${response.status}`);
+  return body;
+}
+
+function setAuthenticated(body) {
+  accessToken = body.access_token;
+  currentUserId = body.user_id;
+  document.getElementById("authStatus").textContent = `Authenticated as ${body.user_id} (${body.role}).`;
+  document.getElementById("run").disabled = false;
+}
+
+const demoClaim = {
+  claim_id: "DEMO-001",
+  customer_id: "",
+  product: {
+    product_id: "PRD-DEMO-001",
+    product_name: "Laptop",
+    category: "Electronics",
+    brand: "Vertex",
+    model_number: "VT-15Pro",
+    serial_number: "SN12345678",
+    purchase_date: "2025-01-10",
+    purchase_price: 900.0,
+    retailer: "TechHub Store",
+    invoice_number: "INV-DEMO-001",
+    warranty_duration_months: 24
+  },
+  warranty: {
+    warranty_id: "WAR-DEMO-001",
+    product_id: "PRD-DEMO-001",
+    provider: "AssureX Warranty",
+    start_date: "2025-01-10",
+    end_date: "2027-01-10"
+  },
+  fault_occurrence_date: "2025-06-01",
+  claim_submission_date: "2025-06-15",
+  fault_description: "Screen does not power on",
+  fault_category: "Display fault",
+  serial_number_match: true,
+  status: "submitted"
+};
+
+const claimJson = document.getElementById("claimJson");
+const runButton = document.getElementById("run");
+const statusBox = document.getElementById("status");
+
+document.getElementById("register").addEventListener("click", async () => {
+  try {
+    const body = await authRequest("/api/auth/register", {
+      email: document.getElementById("email").value,
+      password: document.getElementById("password").value
+    });
+    setAuthenticated(body);
+    loadDemo();
+  } catch (error) {
+    document.getElementById("authStatus").textContent = `Registration failed: ${error.message}`;
+  }
+});
+
+document.getElementById("login").addEventListener("click", async () => {
+  try {
+    const body = await authRequest("/api/auth/login", {
+      email: document.getElementById("email").value,
+      password: document.getElementById("password").value
+    });
+    setAuthenticated(body);
+    loadDemo();
+  } catch (error) {
+    document.getElementById("authStatus").textContent = `Login failed: ${error.message}`;
+  }
+});
+
+function setStatus(message) { statusBox.textContent = message; }
+function loadDemo() {
+  demoClaim.customer_id = currentUserId;
+  claimJson.value = JSON.stringify(demoClaim, null, 2);
+  runButton.disabled = !accessToken;
+  setStatus("Demo claim loaded. Check the Teachable Machine model URL, then run evaluation.");
+}
+
+document.getElementById("loadDemo").addEventListener("click", loadDemo);
+claimJson.addEventListener("input", () => { runButton.disabled = claimJson.value.trim() === ""; });
+
+async function postJson(url, payload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(payload)
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.detail || `Request failed: ${response.status}`);
+  return body;
+}
+
+function normalizeLabel(label) {
+  return label.trim().toLowerCase().replace(/[_-]+/g, " ");
+}
+
+function mapModelClass(label) {
+  const normalized = normalizeLabel(label);
+  if (normalized === "valid claim") return "valid_claim";
+  if (normalized === "invalid claim") return "invalid_claim";
+  if (normalized === "manual review") return "manual_review";
+  throw new Error(`Unexpected Teachable Machine class label: ${label}`);
+}
+
+async function loadTmModel(baseUrl) {
+  const clean = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  return tmImage.load(`${clean}model.json`, `${clean}metadata.json`);
+}
+
+async function predictWithTm(model, imageElement) {
+  const predictions = await model.predict(imageElement, false);
+  const probabilities = {
+    valid_claim: 0,
+    invalid_claim: 0,
+    manual_review: 0
+  };
+  let top = null;
+  for (const item of predictions) {
+    const mapped = mapModelClass(item.className);
+    probabilities[mapped] = Number(item.probability);
+    if (!top || item.probability > top.probability) top = { mapped, probability: Number(item.probability) };
+  }
+  if (!top) throw new Error("Teachable Machine returned no predictions.");
+  return {
+    model_name: "TeachableMachine",
+    model_version: "exported-model",
+    predicted_class: top.mapped,
+    confidence: top.probability,
+    probabilities,
+    timestamp: new Date().toISOString()
+  };
+}
+
+runButton.addEventListener("click", async () => {
+  runButton.disabled = true;
+  try {
+    const claim = JSON.parse(claimJson.value);
+    setStatus("Rendering the evidence-only Claim Summary Card...");
+    const cardResponse = await postJson("/api/cards/render", { claim });
+    document.getElementById("cardImage").src = `${cardResponse.image_url}?t=${Date.now()}`;
+    document.getElementById("cardData").textContent = JSON.stringify(cardResponse.card, null, 2);
+
+    setStatus("Loading the Teachable Machine model...");
+    const model = await loadTmModel(document.getElementById("tmModelUrl").value.trim());
+    const imageElement = document.getElementById("cardImage");
+    if (!imageElement.complete) await new Promise(resolve => imageElement.addEventListener("load", resolve, {once: true}));
+    const tmPrediction = await predictWithTm(model, imageElement);
+
+    setStatus(`Teachable Machine predicted ${tmPrediction.predicted_class} at ${(tmPrediction.confidence * 100).toFixed(1)}%. Sending both model evidence to the backend...`);
+    const result = await postJson("/api/claims/evaluate", {
+      claim,
+      teachable_machine_prediction: tmPrediction
+    });
+    document.getElementById("decision").textContent = JSON.stringify(result, null, 2);
+    setStatus(`Evaluation complete: ${result.decision}.`);
+  } catch (error) {
+    setStatus(`Evaluation stopped: ${error.message}`);
+  } finally {
+    runButton.disabled = false;
+  }
+});
+
+claimJson.value = JSON.stringify(demoClaim, null, 2);
+</script>
+</body>
+</html>

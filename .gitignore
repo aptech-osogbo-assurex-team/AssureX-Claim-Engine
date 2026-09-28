@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local application database
+/data/assurex.db
+/data/assurex.db-*
+
+# Runtime/generated files
+/static/cards/*.jpg
+/data/uploads/
+__pycache__/
+.pytest_cache/

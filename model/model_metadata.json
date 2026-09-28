@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "model_name": "RandomForestClassifier",
+  "artifact": "model/classifier.joblib",
+  "artifact_sha256": "fec41ad7b3b2bcb1a74abc184567c2137c83da71549790289f0deed1fd36093f",
+  "training_dataset": "data/claims.csv",
+  "test_accuracy": 0.928889,
+  "training_scikit_learn_version": "1.9.1",
+  "test_confusion_matrix": {
+    "labels": [
+      "Valid Claim",
+      "Invalid Claim",
+      "Manual Review"
+    ],
+    "matrix": [
+      [
+        75,
+        0,
+        0
+      ],
+      [
+        0,
+        68,
+        7
+      ],
+      [
+        3,
+        6,
+        66
+      ]
+    ]
+  },
+  "cross_validation": {
+    "folds": 5,
+    "scope": "training split only",
+    "results_generated_by": "src/model_training/train_model.py"
+  }
+}

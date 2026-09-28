@@ -18,6 +18,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import StratifiedKFold, cross_val_score
 
 NUMERIC_FEATURES = [
     "purchase_price", "warranty_duration_months", "product_age_days",
@@ -58,6 +59,23 @@ def evaluate(pipeline: Pipeline, X, y, label: str):
     return acc
 
 
+def cross_validate(pipeline: Pipeline, X, y, label: str) -> dict[str, object]:
+    """Run stratified CV on the training split only; never use validation/test here."""
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    scores = cross_val_score(pipeline, X, y, cv=cv, scoring="accuracy", n_jobs=-1)
+    result = {
+        "folds": 5,
+        "scores": [round(float(score), 6) for score in scores],
+        "mean": round(float(scores.mean()), 6),
+        "std": round(float(scores.std()), 6),
+    }
+    print(
+        f"\n{label} 5-fold CV (train split only): "
+        f"mean={result['mean']:.4f}, std={result['std']:.4f}, scores={result['scores']}"
+    )
+    return result
+
+
 if __name__ == "__main__":
     train, val, test = load_splits()
     X_train, y_train = train[NUMERIC_FEATURES + CATEGORICAL_FEATURES], train[TARGET]
@@ -82,6 +100,7 @@ if __name__ == "__main__":
             best_name, best_pipeline, best_val_acc = name, pipeline, val_acc
 
     print(f"\n=== Selected model: {best_name} (validation accuracy {best_val_acc:.4f}) ===")
+    cv_result = cross_validate(best_pipeline, X_train, y_train, best_name)
 
     test_acc = evaluate(best_pipeline, X_test, y_test, f"{best_name} (TEST - held out)")
     print("\nConfusion matrix (test):")
@@ -92,4 +111,16 @@ if __name__ == "__main__":
           f"{'MEETS target' if test_acc >= 0.85 else 'BELOW target - needs work'}")
 
     joblib.dump(best_pipeline, "model/classifier.joblib")
+
+    import json
+    metrics = {
+        "model_name": best_name,
+        "validation_accuracy": round(float(best_val_acc), 6),
+        "cross_validation": cv_result,
+        "test_accuracy": round(float(test_acc), 6),
+    }
+    with open("model/training_metrics.json", "w", encoding="utf-8") as handle:
+        json.dump(metrics, handle, indent=2)
+
     print(f"\nSaved best model ({best_name}) to model/classifier.joblib")
+    print("Saved training metrics to model/training_metrics.json")

@@ -1,0 +1,100 @@
+{
+  "version": "1.0.0",
+  "default": {
+    "standard_warranty_duration_months": 24,
+    "reporting_deadline_days": 30,
+    "grace_period_days": 0,
+    "required_document_groups": [
+      ["receipt", "invoice"],
+      ["warranty_card"],
+      ["product_photo"],
+      ["serial_evidence"],
+      ["fault_evidence"]
+    ],
+    "conditional_document_groups": {
+      "previous_repairs": [["repair_report", "diagnostic_report"]],
+      "previous_replacement": [["replacement_evidence"]]
+    },
+    "covered_fault_categories": [
+      "Manufacturing defect",
+      "Component failure",
+      "Motor malfunction",
+      "Display fault",
+      "Battery defect",
+      "Compressor failure"
+    ],
+    "excluded_damage_types": [
+      "Water damage",
+      "Physical/drop damage",
+      "Unauthorized repair damage",
+      "Power surge (external)",
+      "Normal wear and tear"
+    ],
+    "reject_unauthorized_repairs": true,
+    "reject_previous_replacement": true
+  },
+  "categories": {
+    "Electronics": {
+      "standard_warranty_duration_months": 24,
+      "reporting_deadline_days": 30,
+      "grace_period_days": 0,
+      "required_document_groups": [
+        ["receipt", "invoice"],
+        ["warranty_card"],
+        ["product_photo"],
+        ["serial_evidence"],
+        ["fault_evidence"]
+      ],
+      "conditional_document_groups": {
+        "previous_repairs": [["repair_report", "diagnostic_report"]],
+        "previous_replacement": [["replacement_evidence"]]
+      },
+      "covered_fault_categories": [
+        "Manufacturing defect",
+        "Component failure",
+        "Display fault",
+        "Battery defect"
+      ],
+      "excluded_damage_types": [
+        "Water damage",
+        "Physical/drop damage",
+        "Unauthorized repair damage",
+        "Power surge (external)",
+        "Normal wear and tear"
+      ],
+      "reject_unauthorized_repairs": true,
+      "reject_previous_replacement": true
+    },
+    "Home Appliance": {
+      "standard_warranty_duration_months": 24,
+      "reporting_deadline_days": 30,
+      "grace_period_days": 0,
+      "required_document_groups": [
+        ["receipt", "invoice"],
+        ["warranty_card"],
+        ["product_photo"],
+        ["serial_evidence"],
+        ["fault_evidence"]
+      ],
+      "conditional_document_groups": {
+        "previous_repairs": [["repair_report", "diagnostic_report"]],
+        "previous_replacement": [["replacement_evidence"]]
+      },
+      "covered_fault_categories": [
+        "Manufacturing defect",
+        "Component failure",
+        "Motor malfunction",
+        "Compressor failure"
+      ],
+      "excluded_damage_types": [
+        "Water damage",
+        "Physical/drop damage",
+        "Unauthorized repair damage",
+        "Power surge (external)",
+        "Normal wear and tear"
+      ],
+      "reject_unauthorized_repairs": true,
+      "reject_previous_replacement": true
+    }
+  }
+}
