@@ -1,0 +1,17 @@
+{
+  "model_name": "RandomForest",
+  "validation_accuracy": 0.906667,
+  "cross_validation": {
+    "folds": 5,
+    "scores": [
+      0.914286,
+      0.938095,
+      0.9,
+      0.890476,
+      0.895238
+    ],
+    "mean": 0.907619,
+    "std": 0.017196
+  },
+  "test_accuracy": 0.928889
+}
