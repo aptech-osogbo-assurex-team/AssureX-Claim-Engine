@@ -20,6 +20,10 @@ Claim evidence
                Likely Valid / Likely Invalid / Manual Review
 ```
 
+## Public Project Page
+
+[AssureX Claim Engine on GitHub Pages](https://aptech-osogbo-assurex-team.github.io/AssureX-Claim-Engine/)
+
 ## Current implementation
 
 The repository currently contains verified implementations for:

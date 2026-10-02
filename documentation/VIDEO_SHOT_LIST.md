@@ -201,5 +201,5 @@ human review so that each recommendation has a traceable reason.”
 - [ ] All five required scenario types demonstrated
 - [ ] Card contains no model output or final decision
 - [ ] Manual review path shown
-- [ ] Final `.mp4` opens and plays correctly
-- [ ] Video link added to repository documentation
+- [x] Final demonstration recording exists — 1085.767 seconds, 204814629 bytes
+- [ ] Video link added to repository documentation — pending public video URL

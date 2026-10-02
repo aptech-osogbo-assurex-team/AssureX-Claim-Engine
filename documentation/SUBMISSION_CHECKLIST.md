@@ -72,8 +72,9 @@ completed before a final resubmission.
 - [ ] Required tricky boundary case
 - [ ] Required model-disagreement case
 - [ ] Final screenshots/evidence
-- [ ] Final Project Report update
-- [ ] Final 2,000+ word blog update and external publication
-- [ ] Final .mp4 demonstration recording
-- [ ] Blog/video links added to repository documentation
+- [x] Final Project Report update — final TM evaluation and documented 0.1111 percentage-point SRS gap
+- [x] Final 2,000+ word blog update and external publication — GitHub Pages: https://aptech-osogbo-assurex-team.github.io/AssureX-Claim-Engine/
+- [x] Final .mp4 demonstration recording
+- [x] Blog link added to repository documentation — GitHub Pages URL above
+- [ ] Video link added to repository documentation — pending public video URL
 - [ ] Final clean submission archive
