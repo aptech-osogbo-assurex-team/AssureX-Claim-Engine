@@ -11,7 +11,7 @@ of those business facts.
 
 That observation became the central design principle of **AssureX Claim Engine**:
 
-> \\\*\\\*A model prediction is evidence, not the entire business decision.\\\*\\\*
+> **A model prediction is evidence, not the entire business decision.**
 
 AssureX combines a Python classification model, a separate Google Teachable
 Machine image model, a configurable warranty-rule engine, consistency checks,
@@ -22,7 +22,7 @@ behind it.
 This article describes what we built, what went wrong during development, what
 we corrected, and how we prepared the system for the final competition evidence.
 
-\---
+---
 
 ## The business problem
 
@@ -54,7 +54,7 @@ This separation gives the application a clearer responsibility boundary. Machine
 learning estimates. Rules validate business conditions. The decision engine
 adjudicates the combined evidence.
 
-\---
+---
 
 ## The architecture
 
@@ -87,7 +87,7 @@ Python model, Teachable Machine result and rule evidence.
 
 That makes the system easier to explain during evaluation and easier to audit.
 
-\---
+---
 
 ## Building the common dataset
 
@@ -122,7 +122,7 @@ claims.
 
 That distinction matters more than a large headline accuracy number.
 
-\---
+---
 
 ## The first difficult lesson: the visual dataset has to be faithful
 
@@ -139,8 +139,8 @@ The card conversion reconstructed a claim but left the submitted-document list
 and repair-history list empty. That meant a CSV record could say:
 
 ```text
-repair\\\_history\\\_count = 2
-missing\\\_document\\\_count = 0
+repair_history_count = 2
+missing_document_count = 0
 ```
 
 while its visual card could show no repair history and missing evidence.
@@ -172,7 +172,7 @@ Result                  PASS
 This was a good example of the difference between implementation quality and
 decision quality. The code already worked. The evidence relationship was wrong.
 
-\---
+---
 
 ## Claim Summary Cards
 
@@ -203,7 +203,7 @@ That design prevents direct label leakage. The visual classifier has to infer
 from the claim evidence representation rather than simply reading a precomputed
 answer from the card.
 
-\---
+---
 
 ## Python model development
 
@@ -244,7 +244,7 @@ classes in the synthetic benchmark, with recall of 88.00%.
 That result is useful because it tells us where errors remain instead of hiding
 them behind one overall accuracy figure.
 
-\---
+---
 
 ## Why Manual Review exists
 
@@ -275,7 +275,7 @@ Examples include:
 The reviewer can make a decision and add comments, while the original automated
 evidence remains in the audit trail.
 
-\---
+---
 
 ## Warranty rules are not machine learning
 
@@ -303,7 +303,7 @@ Representative checks include:
 The rule engine returns a result such as:
 
 ```text
-rule\\\_id
+rule_id
 passed
 severity
 message
@@ -312,7 +312,7 @@ message
 That means the final decision can explain not only what a model predicted, but
 also which business conditions passed or failed.
 
-\---
+---
 
 ## OCR and document processing
 
@@ -340,7 +340,7 @@ The practical limitation is that actual OCR depends on the Tesseract installatio
 in the runtime environment. The application handles unavailable OCR with a
 controlled error instead of crashing.
 
-\---
+---
 
 ## Model comparison
 
@@ -378,9 +378,9 @@ The system categorizes the comparison into:
 The key idea is that disagreement becomes a visible signal rather than something
 that is averaged away.
 
-\---
+---
 
-\## The 30+ unseen-claim requirement
+## The 30+ unseen-claim requirement
 
 The competition requires a separate comparison report containing at least 30 unseen test claims and detailed evidence for both models.
 
@@ -422,7 +422,7 @@ application logic, and that is how the decision path is structured.
 The competition dataset is synthetic. Real personal customer evidence should not
 be committed to the public repository.
 
-\\---
+---
 
 ## Testing
 
@@ -430,14 +430,14 @@ Testing was treated as part of implementation rather than a final ceremony.
 
 The hardened suite now contains 45 tests covering:
 
-\* domain schema validation;
-\* authentication and API protection;
-\* card rendering;
-\* ML inference;
-\* rule behavior;
-\* decision behavior;
-\* document ingestion;
-\* dataset/card fidelity.
+* domain schema validation;
+* authentication and API protection;
+* card rendering;
+* ML inference;
+* rule behavior;
+* decision behavior;
+* document ingestion;
+* dataset/card fidelity.
 
 The test run in the current engineering environment is:
 
@@ -450,7 +450,7 @@ requirements pin that version. The final local verification should be repeated
 on the team's declared Python 3.13.1 / scikit-learn 1.9.1 environment after the
 final Teachable Machine and evidence changes.
 
-\---
+---
 
 ## What went wrong and what we learned
 
@@ -494,7 +494,7 @@ target of at least 85%.
 
 The 0.1111 percentage-point gap is retained rather than rounded upward.
 
-\---
+---
 
 ## Limitations
 
@@ -536,7 +536,7 @@ of the core decision system rather than implement a large number of shallow
 
 features that cannot be properly tested.
 
-\---
+---
 
 ## Conclusion
 
@@ -559,7 +559,7 @@ Contradiction / duplicate / missing evidence checks
 Explainable decision
   ↓
 Human review when necessary
-
+```
 
 The hardened resubmission now has a traceable evidence chain from the corrected
 structured claims and Claim Summary Cards through the independent model
@@ -581,4 +581,4 @@ form part of the final claim.
 The result is therefore presented as an evidence-backed competition prototype,
 with its implemented capabilities and remaining limitations stated explicitly.
 
-\---
+---
