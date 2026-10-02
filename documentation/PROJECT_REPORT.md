@@ -1,564 +1,1162 @@
-# AssureX Claim Engine — Technical Report
+# AssureX Claim Engine — Technical Project Report
 
-> **Document status:** Working submission draft
->
-> **Important:** This report distinguishes implemented and verified functionality from requirements that are still pending verification. Do not replace `TBD` or `PENDING EVIDENCE` entries with guessed values. Update them only after the team produces the corresponding test result, screenshot, metric, or demonstration evidence.
+**Submission artifact:** AssureX Claim Engine — NextWave AI and ML
 
-## 1. Executive Summary
+**Report status:** Evidence complete engineering resubmission with one documented SRS metric gap.
 
-AssureX is an AI-assisted warranty claim validation system designed to support structured claim intake, evidence processing, independent machine-learning assessment, warranty-rule validation, model comparison, explainable adjudication, and human review.
+The major evidence gaps identified during hardening have been addressed. The corrected dataset, Claim Summary Cards, train/validation/test split, card fidelity, model artifacts, Teachable Machine evaluation, 30 case model comparison, standalone warranty policies, and automated validation are now retained as evidence.
 
-The current engineering checkpoint moves the project beyond a standalone classifier into a decision pipeline. The Python classification model provides one evidence source. A separately trained Google Teachable Machine image model is intended to provide an independent second evidence source from a Claim Summary Card. Configurable warranty and integrity rules provide business evidence. A deterministic decision engine combines these signals and can route uncertain or conflicting cases to manual review.
+Some broader user facing SRS capabilities remain **Partial** or **Pending** where the implementation or demonstration is not complete. These statuses are retained rather than presented as fully implemented.
 
-The current verified machine-learning baseline uses 1,500 synthetic claim records across three classes: Valid Claim, Invalid Claim, and Manual Review. The saved Random Forest artifact records 92.889% held-out test accuracy on the synthetic test split. The application currently has 42 passing automated tests in the team's Python 3.13.1 / scikit-learn 1.9.1 environment.
+The final Teachable Machine measurement is also reported exactly: **84.8889% (191/225) on the independent unseen test set**, against the SRS target of **≥85%**. The gap is **0.1111 percentage points** and is not presented as a pass.
 
-The current checkpoint is not presented as proof that every SRS requirement is complete. The most important remaining evidence includes the independently trained Teachable Machine model, its training/validation/test evidence, actual five-fold cross-validation results, 30+ unseen dual-model comparisons, complete dashboard/reporting flows, monitoring, and the final demonstration/submission evidence.
+## 1\. Executive Summary
 
-## 2. Problem Definition
+AssureX is an AI-assisted warranty claim decision support application designed
+around evidence rather than a single model prediction. A claim is represented as
+structured data, supporting documents, repair information, warranty conditions,
+and integrity signals. The system uses a Python classification model as one
+source of predictive evidence, an evidence only Claim Summary Card as the input
+to a separate Google Teachable Machine image model, a configurable warranty
+rule engine, consistency checks, duplicate detection, and a deterministic final
+decision engine.
 
-Warranty claim processing can require customers or service-centre staff to submit receipts, warranty cards, serial-number evidence, fault evidence, repair information, and other supporting documents. Manual assessment can be slowed by missing documents, conflicting dates, inconsistent product identifiers, duplicate evidence, unclear warranty status, and high case volume.
+The key decision-design principle is:
 
-The AssureX problem is therefore not simply to predict whether a claim looks valid. The system must combine claim evidence, business warranty conditions, document completeness, integrity checks, and independent model assessments into a traceable recommendation.
+> \\\\\*\\\\\*A model prediction is evidence, not the entire business decision.\\\\\*\\\\\*
 
-## 3. Background and Business Necessity
+The current Python baseline uses 1,500 synthetic claim records divided into
+1,050 training, 225 validation, and 225 held out test claims, balanced across
+Valid Claim, Invalid Claim, and Manual Review. The saved Random Forest model has
+92.8889% held-out test accuracy. Five-fold stratified cross-validation on the
+training split has mean accuracy 90.7619% with standard deviation 1.7196%.
+Class-wise precision, recall, F1-score, and the test confusion matrix are stored
+in the model evidence files.
 
-A practical warranty workflow must answer at least four questions:
+The Claim Summary Card generation pipeline was hardened for resubmission. The
+same CSV record is now reconstructed into a canonical claim before its card is
+rendered, including the document-availability and repair-history evidence that
+was previously lost during conversion. A deterministic audit across all 1,500
+claims reports **zero card-data field mismatches**.
 
-1. Is the submitted evidence internally consistent?
-2. Is the product and warranty information compatible with the claim?
-3. What do the independent machine-learning models predict?
-4. Is there enough agreement and evidence to make a recommendation, or should the case be reviewed by a human?
+The repository also contains separate train/validation/test CSV artifacts, a
+claim to image mapping, dataset statistics, data dictionary, three explicit
+warranty-policy files, a browser batch evaluator for the real Teachable Machine
+model, and a report-generation utility for the required 30+ unseen-claim model
+comparison.
 
-AssureX addresses these questions through a layered decision pipeline rather than treating a single model probability as the final business decision.
+The retained Teachable Machine Model A was retrained on the corrected 2,100-card
 
-## 4. Proposed Solution
+training set and evaluated against the independent 225-card unseen test set.
 
-The proposed architecture is:
+The production artifact is retained under `static/teachable_machine/` and was
+
+byte compared against the retained exported Model A artifact used for evaluation.
+
+
+
+The final Teachable Machine result is 191 correct predictions out of 225,
+
+or 84.8889% accuracy. The SRS target is at least 85%, so the measured result
+
+is 0.1111 percentage points below the stated target. This gap is reported
+
+explicitly rather than rounded upward.
+
+
+
+The repository also retains the 30-case Python/Teachable Machine comparison
+
+report as separate integration evidence.
+
+\---
+
+## 2\. Problem Definition
+
+Warranty-claim assessment combines several kinds of evidence at once:
+
+* purchase and warranty dates;
+* product identity and serial numbers;
+* receipts, warranty cards and supporting evidence;
+* fault and damage information;
+* previous repair or replacement history;
+* document completeness;
+* possible duplicate submissions; and
+* model-based classification.
+
+A useful claim system must therefore distinguish between **prediction** and
+**adjudication**. A classifier can estimate a class from historical patterns,
+but it does not by itself establish that a warranty is active, that a serial
+number is consistent, that required evidence exists, or that the claim should
+be escalated to a reviewer.
+
+AssureX addresses the broader problem by combining predictive evidence with
+explicit business rules and an auditable decision process.
+
+\---
+
+## 3\. Background and Business Necessity
+
+The SRS frames the application as a claim-processing workflow rather than a
+standalone machine-learning exercise. In that workflow a customer or service
+centre creates a claim, supplies evidence, the application extracts and checks
+information, the models independently assess the claim, warranty policies are
+evaluated, inconsistencies are identified, and a final recommendation is
+produced.
+
+The architecture therefore prioritizes:
+
+1. **Traceability** — a reviewer can inspect what evidence led to a decision.
+2. **Consistency** — model disagreement and rule violations do not silently
+disappear.
+3. **Configurability** — warranty conditions live in policy files rather than
+being duplicated across request handlers.
+4. **Human review** — uncertain or conflicting cases can be routed instead of
+being forced into a binary decision.
+5. **Reproducibility** — dataset generation, training and evidence generation
+are scripted.
+
+\---
+
+## 4\. Proposed Solution
+
+### 4.1 Decision pipeline
 
 ```text
-Claim + Evidence
-      |
-      +--> Python preprocessing / tabular features --> Python classifier
-      |
-      +--> Evidence-only Claim Summary Card -------> Google Teachable Machine
-      |
-      +--> Warranty / integrity rules
-      |
-      +--> Duplicate / missing-document / contradiction checks
-      |
-      +------------------------------+
-                                     |
-                          Evidence comparison
-                                     |
-                              Decision Engine
-                                     |
-                 +-------------------+-------------------+
-                 |                   |                   |
-           Likely Valid       Likely Invalid      Manual Review
+Claim + Supporting Evidence
+            |
+            +------------------------------+
+            |                              |
+            v                              v
+  Structured/tabular data        Evidence-only Claim Summary Card
+            |                              |
+            v                              v
+      Python classifier          Google Teachable Machine
+            |                              |
+            +---------------+--------------+
+                            |
+                            v
+               Model comparison / confidence
+                            |
+                            +-------------------+
+                            |                   |
+                            v                   v
+                  Warranty / integrity   Duplicate / evidence
+                       rule engine       completeness / consistency
+                            |                   |
+                            +---------+---------+
+                                      |
+                                      v
+                             Deterministic Decision
+                                      |
+                   +------------------+------------------+
+                   |                  |                  |
+                   v                  v                  v
+              Likely Valid      Likely Invalid    Manual Review
 ```
 
-The core design principle is:
+### 4.2 Architectural boundary
 
-> **Model prediction is evidence, not the entire decision.**
+The Python and Teachable Machine models remain independent. Neither model is
+allowed to embed business-rule decisions. The rule engine evaluates warranty and
+integrity facts. The final decision engine combines the resulting evidence into
+one of:
 
-The final adjudication is deterministic application logic. It does not call an external generative-AI service to decide whether a claim should be valid or invalid.
+* `Likely Valid`
+* `Likely Invalid`
+* `Manual Review Required`
 
-## 5. Purpose of this Document
+The decision engine records reasons, supporting factors, opposing factors,
+model comparison evidence, rule results, and review information.
 
-This document records the problem, requirements, architecture, modules, data design, machine-learning approach, decision logic, testing strategy, security and privacy considerations, limitations, and outstanding evidence required for the final AssureX submission.
+\---
 
-## 6. Scope
+## 5\. Purpose of the Document
 
-### 6.1 In scope
+This report documents the AssureX solution against the SRS. It is intended to
+let a reviewer understand the system, reproduce the data/model artifacts,
+inspect the decision flow, and distinguish verified functionality from remaining
+competition evidence.
 
-- User authentication and claim ownership
-- Product and warranty data structures
-- Claim registration
-- Supporting-document intake
-- File integrity hashing
-- OCR extraction integration
-- Canonical claim schemas
-- Python ML inference from the saved model
-- Evidence-only Claim Summary Card generation
-- Google Teachable Machine browser integration
-- Warranty and integrity rules
-- Model comparison and consistency status
-- Final deterministic adjudication
-- Duplicate detection
-- Manual review and reviewer override foundations
-- Persistence and audit records
-- Automated tests
+\---
 
-### 6.2 Out of scope or pending final verification
+## 6\. Scope
 
-- Production-scale monitoring
-- Full administrator analytics and export suite
-- Complete notification catalogue required by the SRS
-- Final deployment proof
-- Final Teachable Machine training artefact and evaluation evidence
-- Complete hidden-claim evaluation
+### In scope
 
-## 7. Assumptions
+* claim domain models and validation;
+* user registration/login and session handling;
+* claim and product persistence;
+* document upload, hashing and OCR integration;
+* Python ML inference using the saved Random Forest artifact;
+* evidence-only Claim Summary Card generation;
+* Teachable Machine browser integration;
+* configurable warranty rules;
+* contradiction, missing-document and duplicate checks;
+* deterministic model/rule adjudication;
+* audit and reviewer-override foundations;
+* reproducible dataset/card/evidence generation;
+* automated tests.
 
-- The competition dataset may be synthetic, provided it meets the SRS requirements and is documented transparently.
-- The Python model artifact is treated as immutable during claim evaluation.
-- Teachable Machine is independently trained from Claim Summary Card images generated from the same underlying claim records.
-- Configurable warranty policies are authoritative for rule evaluation.
-- Human review remains necessary for uncertain, conflicting, incomplete, duplicated, or otherwise escalated claims.
+### Deliberately not over-engineered
 
-## 8. Constraints
+The solution does not introduce distributed services, message queues, cloud
+microservices, or a separate analytics platform. The SRS permits SQLite,
+FastAPI, JavaScript/HTML and local data assets, so the design keeps the core
+workflow inspectable and explainable.
 
-- The SRS requires two independently assessed representations of the same underlying claim data.
-- The final claim decision must be produced by team application logic using the Python model, Google Teachable Machine model, warranty rules, and application logic.
-- The solution must remain explainable to the student team during judging.
-- AI-assisted development must be disclosed and independently reviewed and tested.
+\---
 
-## 9. Functional Requirements Traceability
+## 7\. Assumptions
 
-Status labels:
+* The competition dataset is synthetic and is described as such.
+* The saved Python model is treated as immutable during inference.
+* Teachable Machine is trained independently on Claim Summary Cards generated
+from the same underlying claim records.
+* Warranty rules are configurable policy evidence, not model predictions.
+* Human review is necessary for uncertain, conflicting or incomplete evidence.
 
-- **Implemented:** present in the current engineering checkpoint and covered by tests or direct inspection.
-- **Partial:** some supporting infrastructure exists, but the full SRS behavior is not yet demonstrated.
-- **Pending:** not yet implemented or not yet evidenced.
+\---
 
-| SRS area | Requirement summary | Status | Current evidence / gap |
-|---|---|---|---|
-| Authentication | User registration/login | Implemented | FastAPI auth endpoints and tests |
-| Product/warranty | Product and warranty structures | Partial | Domain and persistence models exist; complete registration workflow still needs final UI/demo verification |
-| Documents | Receipt/invoice/warranty/evidence upload | Partial | Secure upload and document model exist; full document lifecycle is not complete |
-| OCR | Extract purchase and product fields | Partial | Tesseract/PDF conversion integration exists; extraction coverage must be demonstrated on representative documents |
-| Verification | User reviews/corrects extracted data | Pending | Not yet demonstrated as a complete UI workflow |
-| Warranty tracking | Calculate/display warranty state | Partial | Rule/card logic exists; complete user-facing tracking still required |
-| Expiry alerts | Configurable expiry notifications | Pending | Notification infrastructure exists, but expiry-trigger workflow is not complete |
-| Claim registration | Unique claim linked to user/product/warranty/docs | Implemented | Authenticated claim registration and persistence |
-| Claim information | Product age, dates, fault, history, replacement, etc. | Partial | Canonical schemas and persistence cover many fields; final UI collection needs verification |
-| Repair history | Repair details and authorization | Partial | Domain/persistence/rule support exists; full management UI is pending |
-| Document organization | View/download/replace/remove | Pending | Storage exists; complete lifecycle endpoints are pending |
-| Data validation | Required fields, file limits/types, duplicate IDs | Implemented/Partial | Pydantic and upload validation exist; full UX validation matrix remains |
-| Preprocessing | Missing values, dates, encoding, normalization, derived fields | Partial | Training pipeline and canonical processing exist; final SRS evidence needs explicit preprocessing report |
-| Common dataset | Same underlying records for CSV and cards | Partial | Card generator maps claim records; final mapping/evidence package is pending |
-| Python classifier | Compare algorithms and select model | Implemented | Existing baseline compares multiple classifiers and saves Random Forest |
-| Python confidence | All three class probabilities | Implemented | Inference adapter exposes probabilities |
-| Claim Summary Card | Evidence-only standardized visual card | Implemented | Deterministic renderer; cards contain no prediction/decision |
-| Teachable Machine | Separate image classifier with 3 classes | Partial | Browser integration exists; exported trained artifact is still required |
-| Model comparison | Compare predicted classes | Implemented | Decision engine computes agreement |
-| Confidence comparison | Absolute top-class confidence difference | Implemented | Decision engine computes difference |
-| Consistency status | Strong/Acceptable/Weak/Disagreement/Uncertain | Implemented | Configurable thresholds in policy |
-| Warranty rules | Expiry, coverage, reporting, purchase, serial, repairs, exclusions, documents | Partial | Rule engine has broad support; final SRS coverage audit still required |
-| Configurable policies | Category-specific rules in config | Implemented | JSON warranty-policy support |
-| Serial verification | Compare serials across evidence | Partial | Rule engine and extracted-value helpers exist; complete evidence sources need final demonstration |
-| Contradiction detection | Date/model/serial consistency checks | Implemented/Partial | Rule engine supports key contradiction checks; full document-driven path pending |
-| Missing documents | Detect and explain missing mandatory evidence | Implemented/Partial | Rule engine/evaluation service support; full user guidance is pending |
-| Duplicate claims | Compare claim/document/product indicators | Implemented | Evaluation service checks claim/document indicators |
-| Document duplicates | SHA-256 document hashing | Implemented | Secure document hash stored and checked |
-| AI-generated claim summary | Human-readable claim summary | Partial | Evidence-only visual card exists; narrative summary workflow is not complete |
-| Claim preparation assistance | Show missing info, docs, deadlines, contradictions and actions | Pending | Not yet demonstrated as complete pre-submission assistant |
-| Final claim decision | Combine models, rules, contradictions, duplicates, confidence | Implemented | Deterministic decision engine |
-| Decision explanation | Supporting/opposing factors and reasons | Implemented | FinalDecision contains explainable evidence and reasons |
-| Manual review | Queue escalated claims and reviewer action | Partial | Review endpoint/override foundation exists; full queue and additional-information flow pending |
-| Reviewer override | Comments and auditable override | Implemented/Partial | Override is persisted; complete reviewer UI is pending |
-| Status tracking | Draft → Submitted → Evaluation/Info/Review → outcome → Closed | Partial | Status persistence exists, but complete lifecycle needs implementation/verification |
-| Notifications | Submission/docs/status/review/decision/expiry alerts | Partial | Notification persistence exists; full trigger catalogue pending |
-| User dashboard | Products, warranties, claims, pending actions | Pending | Not complete |
-| Admin dashboard | Counts, disagreements, trends, confidence etc. | Pending | Not complete |
-| Search/filtering | Claim/product/status/confidence/reviewer/date filters | Pending | Not complete |
-| Analytics/reporting | Outcome, faults, reasons, expirations, model performance | Pending | Not complete |
-| Downloadable claim report | Full evidence and decision report | Pending | Not complete |
-| Data export | CSV/Excel compatible export | Pending | Not complete |
-| Database | Secure relational/NoSQL store | Implemented | SQLite persistence models exist |
-| Audit trail | Record important actions and decisions | Implemented | AuditLog persistence exists |
-| Model versioning | Link predictions to model versions | Implemented | Prediction records and metadata |
-| Error handling | Friendly errors without technical leakage | Partial | API/error handling exists; final UX review pending |
-| Monitoring | Upload/login/duplicate/model/anomaly alerts | Pending | Not complete |
-| Responsive web UI | Customer/reviewer/admin workflows | Partial | Browser application foundation exists; complete role dashboards are pending |
+## 8\. Constraints
 
-## 10. Non-Functional Requirements Traceability
+* The SRS requires one common dataset represented both as structured claim
+records and as Claim Summary Card images.
+* Training, validation and test claims must remain separated.
+* The Claim Summary Card must not contain a Python prediction, confidence score,
+or final decision.
+* The final claim decision must be produced using the team's application logic,
+Python model, Teachable Machine model and warranty-rule engine rather than an
+external generative-AI decision API.
+* AI-assisted development must be declared and independently reviewed/tested.
 
-| Requirement | Status | Evidence / next evidence |
-|---|---|---|
-| Performance: prediction within 5 seconds under normal operation | Pending | Benchmark on the final deployed environment |
-| Scalability: at least 10,000 claims | Pending | Persistence/load test evidence |
-| Usability | Partial | Browser UI exists; full role-based usability walkthrough pending |
-| Accuracy: at least 85% on unseen claims for both models | Partial | Python held-out synthetic accuracy is 92.889%; Teachable Machine unseen accuracy is pending |
-| Availability: 99% uptime during business hours | Pending | Deployment/availability evidence |
+\---
 
-## 11. System Architecture
+## 9\. Requirements Traceability
 
-### 11.1 Application layers
+The SRS requires the team to implement the functional and non-functional
+requirements, document them, and submit supporting source/data/model evidence.
+The matrix below is intentionally conservative.
 
-1. **Interface layer** — browser-facing HTML/JavaScript and FastAPI endpoints.
-2. **Domain layer** — strict Pydantic schemas and enums.
-3. **Application services** — registration, evaluation, document handling.
-4. **Evidence layer** — OCR, hashing, Claim Summary Card generation.
-5. **Model layer** — saved Python model inference and Teachable Machine integration.
-6. **Rules layer** — configurable warranty and integrity policy evaluation.
-7. **Decision layer** — deterministic model comparison and final adjudication.
-8. **Persistence layer** — relational records for claims, documents, predictions, rule results, decisions, audit entries and notifications.
+**Status meanings**
 
-### 11.2 Decision boundary
+* **Implemented** — code exists and is covered by automated tests or direct
+artifact inspection.
+* **Partial** — the main technical foundation exists but the full SRS workflow
+or demonstration evidence is incomplete.
+* **Pending** — not yet implemented or not yet evidenced.
 
-The decision engine receives already-computed evidence. It does not train models, generate fabricated confidence values, or call a generative model to decide the claim.
+|SRS capability|Status|Evidence / remaining gap|
+|-|-|-|
+|User registration/login|Implemented|FastAPI auth endpoints + tests|
+|Product registration|Partial|Product persistence exists; full user-facing workflow needs final demo|
+|Warranty registration/tracking|Partial|Warranty model/rules exist; full tracking UI remains incomplete|
+|Receipt/invoice upload|Partial|Secure upload path exists; final document workflow is incomplete|
+|OCR extraction|Partial|Tesseract/PDF integration exists; representative extraction evidence needed|
+|Extracted-data verification|Pending|Correction UI not fully demonstrated|
+|Warranty expiry alerts|Pending|Notification model exists; complete trigger workflow not evidenced|
+|Claim registration|Implemented|Authenticated registration + persistence + uniqueness check|
+|Claim information collection|Partial|Domain schema and persistence cover core fields; full UI collection incomplete|
+|Fault/damage evidence upload|Partial|Generic secure document ingestion exists; full media workflow incomplete|
+|Repair history management|Partial|Domain/persistence/rule support exists; complete management UI incomplete|
+|Document organization|Partial|Documents are stored under claim records; full replace/remove/download UX incomplete|
+|Data validation|Implemented/Partial|Pydantic + file checks + duplicate IDs; full UX validation matrix incomplete|
+|Python preprocessing|Partial|Feature engineering and pipeline exist; detailed preprocessing report included|
+|Common dataset|Implemented|1,500 records with exact 70/15/15 split|
+|Python classification model|Implemented|Candidate comparison + Random Forest artifact|
+|Python confidence scores|Implemented|All three class probabilities returned|
+|Claim Summary Card|Implemented|Evidence-only renderer; fidelity audit = 0 mismatches|
+|Teachable Machine classification|Implemented|Corrected 2,100-card training set; retained production artifact; independent 225-card test evaluation = 84.8889%|
+|Model prediction comparison|Implemented|Decision engine computes agreement|
+|Confidence difference|Implemented|Absolute top-confidence difference|
+|Consistency status|Implemented|Strong / Acceptable / Weak / Disagreement / Uncertain|
+|Warranty-rule validation|Implemented|Configurable policy-driven rule engine|
+|Configurable policy files|Implemented|Active combined policy + three standalone policy artifacts|
+|Serial verification|Implemented/Partial|Canonical/rule support; full multi-document extraction demo incomplete|
+|Contradiction detection|Implemented|Date and extracted-identifier consistency rules|
+|Missing-document detection|Implemented|Required/conditional document groups|
+|Duplicate claim detection|Implemented|Claim-level duplicate logic and document hash detection|
+|Document duplicate detection|Implemented|SHA-256 evidence stored and compared|
+|Claim summary/explanation|Partial|Decision explanation and evidence structure exist; richer summary UX incomplete|
+|Claim preparation assistance|Partial|Missing evidence can be represented; complete guidance UI incomplete|
+|Final claim decision|Implemented|Deterministic decision engine|
+|Decision explanation|Implemented|Supporting/opposing factors + reasons + rule results|
+|Manual review queue foundation|Implemented|Escalation + reviewer override persistence|
+|Reviewer comments/override|Implemented|Protected override path + audit history|
+|Claim status tracking|Implemented/Partial|Status enum/persistence exists; complete visual tracking incomplete|
+|Notifications|Partial|Persistence exists; complete notification catalogue/triggers incomplete|
+|User dashboard|Pending|Not fully implemented|
+|Administrator dashboard|Pending|Not fully implemented|
+|Search/filtering|Pending|Not fully implemented|
+|Analytics/reporting|Partial|Evidence reports exist; full application analytics dashboard incomplete|
+|Downloadable claim report|Partial|Evidence generation exists; full user-facing download UX incomplete|
+|Data export|Pending|Not fully implemented|
+|Relational data storage|Implemented|SQLite + SQLAlchemy models|
+|Audit trail|Implemented|Claim/document/model/rule/review audit records|
+|Model version tracking|Implemented|Model metadata linked to artifact|
+|Error handling|Partial|API errors are controlled; full UX coverage incomplete|
+|Monitoring/anomaly alerts|Pending|Not fully implemented|
 
-## 12. Module Descriptions
+\---
 
-### 12.1 Domain schemas
+## 10\. Database Design
 
-The domain layer defines stable contracts for products, warranties, claims, documents, repairs, model predictions, rule results, decision evidence, and final decisions.
-
-### 12.2 Authentication
-
-Users authenticate through registration/login. Passwords are stored as hashes and sessions use opaque bearer tokens with expiration.
-
-### 12.3 Persistence
-
-SQLite provides the current relational store. The schema includes users, sessions, products, warranties, claims, documents, repairs, predictions, rule results, decisions, audit logs and notifications.
-
-### 12.4 Document intake
-
-Uploaded documents are validated for supported type and size, assigned secure stored names, hashed with SHA-256, and associated with the relevant claim.
-
-### 12.5 OCR
-
-OCR uses Tesseract integration with PDF/image handling. The deployment environment must have the OCR executable installed and configured.
-
-### 12.6 Claim Summary Card
-
-The card is generated deterministically from evidence-only fields such as product age, warranty status, fault type, repair history, document availability, and serial-number status. It intentionally excludes model predictions, confidence scores, and the final decision.
-
-### 12.7 Python model inference
-
-The application loads `model/classifier.joblib` and predicts the three canonical classes. Claim evaluation does not retrain the model.
-
-### 12.8 Warranty and integrity rules
-
-Rules are loaded from JSON policy files and check warranty dates, proof/evidence conditions, serial consistency, contradictions, document completeness, duplicates, repairs, exclusions and related integrity constraints.
-
-### 12.9 Decision engine
-
-The engine computes model agreement, confidence difference and consistency status, then considers rule failures, contradictions, missing documents and duplicate indicators. Escalation produces `Manual Review Required` rather than hiding uncertainty.
-
-### 12.10 Manual review
-
-Escalated claims can be reviewed by an authorized user. Reviewer comments and override state are persisted.
-
-## 13. Database Design
-
-Current persistence entities:
+The application uses SQLite through SQLAlchemy. Core records are separated so
+that the decision evidence is not stored as one opaque JSON blob.
 
 ```text
-User
-  └── Session
-
-User
-  └── Product
-        └── Warranty
-        └── Repair
-
-Claim
-  ├── Documents
-  ├── Predictions
-  ├── Rule Results
-  ├── Decision
-  ├── Audit Logs
-  └── Notifications
+users
+  |
+  +---- products ---- warranties
+  |          |
+  |          +---- repairs
+  |
+  +---- claims
+            |
+            +---- documents
+            +---- predictions
+            +---- rule\\\\\\\_results
+            +---- decisions
+            +---- audit\\\\\\\_logs
+            +---- notifications
 ```
 
-The final report must add the database ER diagram and data dictionary as actual figures/appendices.
+### Core entities
 
-## 14. Data Dictionary
+|Entity|Purpose|
+|-|-|
+|Users|Authentication, role and ownership|
+|Products|Product identity/purchase information|
+|Warranties|Warranty dates and policy-related facts|
+|Claims|Claim facts, state and evidence flags|
+|Documents|Uploaded evidence, hashes, OCR output and verification status|
+|Repairs|Previous repair history and authorization|
+|Predictions|Python/TM predictions, probabilities and model version|
+|Rule Results|Individual warranty/integrity rule outcomes|
+|Decisions|Final recommendation and complete decision evidence|
+|Audit Logs|Important lifecycle actions|
+|Notifications|Status/evidence alerts|
 
-| Entity | Key fields | Purpose |
-|---|---|---|
-| User | user_id, email, password_hash | Customer/reviewer identity |
-| Session | token hash, expiry, user_id | Authenticated session state |
-| Product | product_id, serial_number, category, purchase_date | Registered product |
-| Warranty | warranty_id, start/end, policy fields | Warranty coverage |
-| Claim | claim_id, product_id, warranty_id, fault fields, status | Claim case |
-| Document | document_id, claim_id, type, sha256, extracted_data | Evidence file |
-| Repair | repair_id, product_id, repair_date, authorization | Service history |
-| Prediction | claim_id, model_name/version, class, probability map | Model evidence |
-| RuleResult | claim_id, rule_id, pass/fail, severity, message | Business/integrity evidence |
-| Decision | claim_id, outcome, reasons, evidence, reviewer data | Final adjudication |
-| AuditLog | action, user_id, claim_id, details, timestamp | Accountability |
-| Notification | user_id, claim_id, type, message, read state | User alerts |
+\---
 
-## 15. Data and Dataset Design
+## 11\. Data Dictionary
 
-The current Python dataset contains 1,500 synthetic claim records across three classes with a 70/15/15 split. This corresponds to 350/75/75 records per class in each partition.
+The machine-readable data dictionary is at `reports/data\\\\\\\_dictionary.csv`.
+The primary dataset fields include:
 
-The committed Python model is a Random Forest classifier. The baseline held-out test accuracy recorded in model metadata is 0.928889 (92.889%).
+* `claim\\\\\\\_id`
+* `product\\\\\\\_name`
+* `category`
+* `brand`
+* `model\\\\\\\_number`
+* `serial\\\\\\\_number`
+* `retailer`
+* `purchase\\\\\\\_date`
+* `purchase\\\\\\\_price`
+* `warranty\\\\\\\_duration\\\\\\\_months`
+* `warranty\\\\\\\_end\\\\\\\_date`
+* `claim\\\\\\\_date`
+* `product\\\\\\\_age\\\\\\\_days`
+* `remaining\\\\\\\_warranty\\\\\\\_days`
+* `fault\\\\\\\_type`
+* `fault\\\\\\\_covered`
+* `repair\\\\\\\_history\\\\\\\_count`
+* `serial\\\\\\\_number\\\\\\\_entered`
+* `serial\\\\\\\_number\\\\\\\_match`
+* `documents\\\\\\\_provided`
+* `missing\\\\\\\_document\\\\\\\_count`
+* `claim\\\\\\\_date\\\\\\\_before\\\\\\\_purchase`
+* `repair\\\\\\\_date\\\\\\\_before\\\\\\\_purchase`
+* `class\\\\\\\_label`
+* `repair\\\\\\\_date`
+* `warranty\\\\\\\_boundary\\\\\\\_proximity`
+* `has\\\\\\\_partial\\\\\\\_documents`
+* `split`
 
-### 15.1 Important limitation
+The hardened dataset also carries `fault\\\\\\\_occurrence\\\\\\\_date` as an explicit
+synthetic evidence field in the dataset-generation path when regenerated. It
+is not a Python model feature.
 
-The dataset is synthetic and some generated features are closely tied to the generated class logic. Therefore, the test result is evidence that the model works on the defined synthetic distribution; it is not evidence of real-world warranty-claim generalisation.
+\---
 
-### 15.2 Required final dataset package
+## 12\. Dataset Design and Integrity
 
-The SRS requires:
+### 12.1 Common dataset
 
-- structured CSV training, validation and test datasets;
-- Claim Summary Card training, validation and test images;
-- generation scripts;
-- scenario definitions;
-- labels and statistics;
-- data dictionary;
-- Claim ID ↔ image filename mapping;
-- strict separation between training and validation/test claims.
+The dataset contains 1,500 records, exactly 500 per class.
 
-**Final evidence status:** PENDING.
+|Split|Valid|Invalid|Manual Review|Total|
+|-|-:|-:|-:|-:|
+|Train|350|350|350|1,050|
+|Validation|75|75|75|225|
+|Test|75|75|75|225|
+|**Total**|**500**|**500**|**500**|**1,500**|
 
-## 16. Python Classification Model
+The `data/datasets/` directory contains the explicit split files generated from
+the common dataset.
 
-### 16.1 Algorithms compared
+### 12.2 Claim Summary Cards
 
-The existing training pipeline compares multiple classical classifiers and selects Random Forest for the committed artifact.
+The SRS requires two visual variations per training claim. The hardened corpus
+contains:
 
-### 16.2 Evaluation
+|Split|Claims|Variations/claim|Images|
+|-|-:|-:|-:|
+|Train|1,050|2|2,100|
+|Validation|225|1|225|
+|Test|225|1|225|
+|**Total**|**1,500**|—|**2,550**|
 
-Verified baseline:
+### 12.3 Card-fidelity correction
+
+The original card conversion discarded the CSV's document and repair-history
+information. The hardened conversion reconstructs those fields before rendering.
+
+A machine-readable audit now records:
 
 ```text
-Dataset size:           1,500 synthetic claims
-Classes:                Valid Claim / Invalid Claim / Manual Review
-Split:                  70 / 15 / 15
-Held-out test accuracy: 92.889%
+Claims checked:        1,500
+Field mismatches:      0
+Result:                PASS
 ```
 
-### 16.3 Held-out confusion matrix
+The corresponding artifacts are:
 
-| Actual \ Predicted | Valid | Invalid | Manual Review |
-|---|---:|---:|---:|
-| Valid Claim | 75 | 0 | 0 |
-| Invalid Claim | 0 | 68 | 7 |
-| Manual Review | 3 | 6 | 66 |
+* `reports/card\\\\\\\_fidelity\\\\\\\_audit.json`
+* `reports/card\\\\\\\_fidelity\\\\\\\_audit.md`
+* `reports/card\\\\\\\_data\\\\\\\_manifest.csv`
+* `reports/card\\\\\\\_mapping.csv`
 
-### 16.4 Pending metric evidence
+The card remains evidence-only: no class label, model prediction, model
+confidence or final decision is rendered into the card image.
 
-- Five-fold cross-validation fold scores: **PENDING**
-- Mean and standard deviation: **PENDING**
-- Final precision/recall/F1 report: **PENDING final evidence table**
-- Final hidden/unseen evaluation: **PENDING**
+\---
 
-## 17. Google Teachable Machine Model
+## 13\. Data Flow Diagram
 
-The application includes a browser integration for a separately trained Teachable Machine image model. The required class labels are:
+```mermaid
+flowchart LR
+    U\\\\\\\[Customer / Service Centre] --> C\\\\\\\[Claim Intake]
+    C --> D\\\\\\\[Documents + Evidence]
+    D --> O\\\\\\\[OCR / Extraction]
+    O --> V\\\\\\\[Verification]
+    V --> S\\\\\\\[Canonical Claim]
+    S --> P\\\\\\\[Python Features]
+    S --> K\\\\\\\[Claim Summary Card]
+    S --> R\\\\\\\[Warranty + Integrity Rules]
+    P --> M1\\\\\\\[Python Model]
+    K --> M2\\\\\\\[Teachable Machine]
+    M1 --> X\\\\\\\[Decision Evidence]
+    M2 --> X
+    R --> X
+    X --> E\\\\\\\[Deterministic Decision Engine]
+    E --> Q\\\\\\\[Valid / Invalid / Manual Review]
+    Q --> A\\\\\\\[Audit + Status + Notification]
+```
 
-- Valid Claim
-- Invalid Claim
-- Manual Review
+\---
 
-The model input is a Claim Summary Card containing evidence only. The card must not render Python predictions, confidence scores or final decisions.
+## 14\. Use Case Diagram
 
-### 17.1 Pending evidence
+```mermaid
+flowchart TB
+    Customer((Customer))
+    Reviewer((Reviewer))
+    Admin((Administrator))
 
-- exported `model.json`
-- `metadata.json`
-- weight files
-- training image counts
-- validation/test image counts
-- training settings
-- unseen accuracy
-- class-wise metrics
-- representative predictions
-- 30+ common-claim comparison table
+    Customer --> UC1\\\\\\\[Register / Login]
+    Customer --> UC2\\\\\\\[Register Product / Warranty]
+    Customer --> UC3\\\\\\\[Create Claim]
+    Customer --> UC4\\\\\\\[Upload Evidence]
+    Customer --> UC5\\\\\\\[Review Extracted Data]
+    Customer --> UC6\\\\\\\[Track Claim]
+    Customer --> UC7\\\\\\\[View Decision]
 
-## 18. Model Prediction and Confidence Comparison
+    Reviewer --> UC8\\\\\\\[Review Escalated Claim]
+    Reviewer --> UC9\\\\\\\[Approve / Reject / Request Info]
+    Reviewer --> UC10\\\\\\\[Override Automated Recommendation]
 
-For each evaluated claim, AssureX records:
+    Admin --> UC11\\\\\\\[Review Audit Data]
+    Admin --> UC12\\\\\\\[Configure Warranty Policies]
+    Admin --> UC13\\\\\\\[Monitor Claims / Model Evidence]
+```
 
+Some use cases above are supported by backend foundations but do not yet have a
+complete polished UI; this distinction is intentional.
+
+\---
+
+## 15\. Activity Diagram
+
+```mermaid
+flowchart TD
+    A\\\\\\\[Start] --> B\\\\\\\[Register / Select Product]
+    B --> C\\\\\\\[Create Claim]
+    C --> D\\\\\\\[Upload Documents]
+    D --> E\\\\\\\[OCR / Extract]
+    E --> F{Verification complete?}
+    F -- No --> G\\\\\\\[Correct / add evidence]
+    G --> E
+    F -- Yes --> H\\\\\\\[Preprocess claim]
+    H --> I\\\\\\\[Generate Claim Summary Card]
+    I --> J\\\\\\\[Python prediction]
+    I --> K\\\\\\\[Teachable Machine prediction]
+    J --> L\\\\\\\[Compare models]
+    K --> L
+    L --> M\\\\\\\[Run warranty / integrity rules]
+    M --> N{Escalation needed?}
+    N -- Yes --> O\\\\\\\[Manual Review]
+    O --> P\\\\\\\[Reviewer decision / override]
+    N -- No --> Q\\\\\\\[Likely Valid / Likely Invalid]
+    P --> R\\\\\\\[Persist final result]
+    Q --> R
+    R --> S\\\\\\\[Audit + status]
+    S --> T\\\\\\\[End]
+```
+
+\---
+
+## 16\. Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant OCR
+    participant DB
+    participant Python
+    participant TM
+    participant Rules
+    participant Decision
+
+    User->>API: Submit claim + evidence
+    API->>OCR: Extract document fields
+    OCR-->>API: Raw extracted evidence
+    API->>DB: Persist verified claim/evidence
+    API->>Python: Build features + predict
+    Python-->>API: Class + 3 probabilities
+    API->>TM: Evaluate evidence-only card
+    TM-->>API: Class + 3 probabilities
+    API->>Rules: Evaluate warranty/integrity rules
+    Rules-->>API: Rule results
+    API->>Decision: Combine model/rule evidence
+    Decision-->>API: Final recommendation + reasons
+    API->>DB: Persist prediction/rules/decision/audit
+    API-->>User: Result + explanation
+```
+
+\---
+
+## 17\. Decision Flow Diagram
+
+```text
+1. Validate claim structure
+2. Verify evidence ownership and file integrity
+3. Build Python feature set
+4. Generate evidence-only Claim Summary Card
+5. Obtain Python prediction
+6. Obtain Teachable Machine prediction
+7. Compare predicted classes
+8. Calculate absolute top-class confidence difference
+9. Evaluate configured warranty rules
+10. Check contradictions, missing evidence and duplicate indicators
+11. Apply consistency policy
+12. Escalate uncertainty/conflict/rule violations to manual review
+13. Otherwise return a likely-valid or likely-invalid recommendation
+14. Persist evidence, explanation and audit history
+```
+
+\---
+
+## 18\. Rule-Engine Design
+
+The rule engine is intentionally independent from machine-learning inference.
+Its policy source is JSON, and the core result type is:
+
+```text
+rule\\\\\\\_id
+passed
+severity
+message
+```
+
+Representative rules include:
+
+* warranty active;
+* product age non-negative;
+* reporting deadline;
+* required document groups;
+* conditional repair/replacement evidence;
+* covered fault;
+* excluded damage;
+* serial-number match;
+* document serial consistency;
+* document model consistency;
+* claim date before purchase contradiction;
+* repair date before purchase contradiction;
+* unauthorized repairs;
+* previous replacement;
+* duplicate claim.
+
+The final adjudicator does not hide rule failures behind a model confidence
+number. Critical failures and evidence gaps can route the case to manual review.
+
+\---
+
+## 19\. Warranty Policy Files
+
+The active application policy is `policies/warranty\\\\\\\_policies.json`.
+The resubmission evidence package also provides:
+
+* `policies/electronics.json`
+* `policies/home\\\\\\\_appliances.json`
+* `policies/default.json`
+
+Each standalone policy includes coverage duration, warranty start conditions,
+covered faults, exclusions, reporting period, repair conditions,
+authorized-service requirements, replacement conditions, grace period,
+mandatory documents, hard-fail rules, warning rules, and manual-review rules.
+
+\---
+
+## 20\. Python Classification Model
+
+### 20.1 Candidate algorithms
+
+The training pipeline compares:
+
+* Logistic Regression
+* Random Forest
+* Gradient Boosting
+
+Selection is performed on the validation split. The held-out test split is
+kept for final evaluation.
+
+### 20.2 Selected model
+
+```text
+Model: Random Forest
+Artifact: model/classifier.joblib
+Model version: 1.0.0
+Training dataset: data/claims.csv
+scikit-learn artifact version: 1.9.1
+```
+
+### 20.3 Evaluation
+
+|Measure|Result|
+|-|-:|
+|Validation accuracy|90.67%|
+|5-fold CV mean|90.76%|
+|5-fold CV standard deviation|1.72%|
+|Held-out test accuracy|92.89%|
+
+### 20.4 Class-wise results
+
+|Class|Precision|Recall|F1|Support|
+|-|-:|-:|-:|-:|
+|Valid Claim|0.9615|1.0000|0.9804|75|
+|Invalid Claim|0.9189|0.9067|0.9128|75|
+|Manual Review|0.9041|0.8800|0.8919|75|
+
+### 20.5 Test confusion matrix
+
+|Actual \\ Predicted|Valid Claim|Invalid Claim|Manual Review|
+|-|-:|-:|-:|
+|Valid Claim|75|0|0|
+|Invalid Claim|0|68|7|
+|Manual Review|3|6|66|
+
+The Python score is a result on the synthetic held-out test split. It is not
+presented as proof of real-world claim accuracy.
+
+\---
+
+## 21\. Claim Summary Card Design
+
+The card is generated only from claim evidence. It displays:
+
+* Claim ID;
+* product age;
+* warranty status;
+* remaining warranty;
+* fault category;
+* repair-history count;
+* receipt/invoice availability;
+* warranty-card availability;
+* serial-number status; and
+* missing documents.
+
+It intentionally does **not** display:
+
+* Python prediction;
+* Python confidence;
+* Teachable Machine prediction;
+* Teachable Machine confidence; or
+* final claim decision.
+
+This separation prevents label leakage into the image representation.
+
+\---
+
+## 22\. Google Teachable Machine Design
+
+The Teachable Machine component is an independent image-classification model
+that receives Claim Summary Cards rather than the raw structured claim record.
+
+The corrected training set contains 2,100 Claim Summary Cards:
+
+- Valid Claim: 700
+- Invalid Claim: 700
+- Manual Review: 700
+
+The independent test set contains 225 Claim Summary Cards:
+
+- Valid Claim: 75
+- Invalid Claim: 75
+- Manual Review: 75
+
+The validation and test cards were not used for training.
+
+The retained production artifact is under:
+
+`static/teachable_machine/`
+
+It contains:
+
+model.json
+metadata.json
+weights.bin
+
+The retained production artifact was byte compared against the exported Model A
+artifact used for evaluation. The files are identical.
+
+### Independent unseen-test evaluation
+
+The retained Model A was evaluated on all 225 independent test cards.
+
+| Metric | Result |
+|-|-:|
+| Test records | 225 |
+| Correct predictions | 191 |
+| Accuracy | 84.8889% |
+| SRS target | ≥85% |
+| Gap | 0.1111 percentage points |
+
+Confusion matrix:
+
+| Actual class | Predicted Valid | Predicted Invalid | Predicted Manual |
+|-|-:|-:|-:|
+| Valid Claim | 68 | 7 | 0 |
+| Invalid Claim | 4 | 69 | 2 |
+| Manual Review | 10 | 11 | 54 |
+
+Per-class performance:
+
+| Class | Precision | Recall | F1 |
+|-|-:|-:|-:|
+| Valid Claim | 82.93% | 90.67% | 86.62% |
+| Invalid Claim | 79.31% | 92.00% | 85.19% |
+| Manual Review | 96.43% | 72.00% | 82.44% |
+| Macro average | 86.22% | 84.89% | 84.81% |
+
+The measured accuracy is reported exactly. It is 0.1111 percentage points below
+the stated SRS target and is therefore not represented as a pass.
+
+### Controlled validation experiment
+
+A separate Teachable Machine configuration was evaluated on the validation set
+for model comparison.
+
+- Model A: 189/225 = 84.00%
+- Model B: 181/225 = 80.4444%
+
+Model B was not promoted to production. The independent 225-card test set
+remained reserved for final evaluation.
+
+### Evaluation evidence
+
+The repository also retains:
+
+static/tm_batch_evaluator.html
+static/tm_test_manifest.json
+scripts/build_model_comparison_report.py
+
+The browser evaluator uses the exported model itself and produces real
+prediction probabilities. The 30-case comparison report is retained as
+claim-level integration evidence and is not used as a substitute for the full
+225-card Teachable Machine accuracy measurement.
+
+\---
+
+## 23\. Model Prediction and Confidence Comparison
+
+The application compares the independently generated Python and Teachable
+Machine predictions at claim level.
+
+The retained report is:
+
+`reports/model_comparison_30.csv`
+
+The report contains:
+
+- Claim ID
+- actual class
 - Python predicted class
-- Python probabilities
+- Python confidence for all three classes
+- Claim Summary Card filename
 - Teachable Machine predicted class
-- Teachable Machine probabilities
-- whether predicted classes match
-- absolute difference between top-class confidence scores
-- consistency status
+- Teachable Machine confidence for all three classes
+- prediction agreement
+- top-class confidence difference
+- model consistency status
+- warranty-rule result
+- missing-document indicators
+- contradiction indicators
+- duplicate indicator
+- final application decision
+- disagreement explanation
 
-The consistency policy supports:
+### 30-case comparison result
 
-```text
-Strong Match
-Acceptable Match
-Weak Match
-Model Disagreement
-Uncertain Result
-```
+The deterministic comparison contains 30 claims selected from the independent
+test set.
 
-Thresholds are configurable rather than embedded throughout the application.
+- Claims compared: 30
+- Prediction agreement: 25/30
+- Agreement rate: 83.33%
 
-## 19. Warranty Rule Engine
+Consistency-status distribution:
 
-Warranty policies are externalized in JSON so that important policy values can be modified without rewriting the adjudication algorithm.
+| Status | Count |
+|-|-:|
+| Strong Match | 10 |
+| Weak Match | 7 |
+| Uncertain Result | 5 |
+| Acceptable Match | 5 |
+| Model Disagreement | 3 |
 
-The rule engine covers categories of checks including:
+Final application decision in the 30-case report:
 
-- warranty activity and expiry
-- proof-of-purchase requirements
-- required documents
-- serial-number consistency
-- product/model consistency
-- claim/fault/repair date contradictions
-- reporting conditions
-- repair authorization
-- excluded damage/fault conditions
-- duplicate indicators
+| Decision | Count |
+|-|-:|
+| Manual review required | 28 |
+| Likely valid | 2 |
 
-The final submission must demonstrate the exact policies used for each supported product category and include at least one surprise-modification exercise.
+The comparison also records warranty-rule outcomes, missing evidence,
+contradictions, duplicate indicators, and disagreement explanations.
 
-## 20. Final Decision Logic
+The 30-case comparison is integration evidence showing how the Python model,
+Teachable Machine model, evidence checks and decision engine interact. It is
+not used as a substitute for the full 225-card Teachable Machine accuracy
+measurement.
 
-The final decision is one of:
+Consistency status remains configurable through:
 
-- **Likely Valid**
-- **Likely Invalid**
-- **Manual Review Required**
+`policies/consistency_policy.json`
 
-The decision engine deliberately escalates cases with uncertain model consistency, model disagreement, weak matching, manual-review predictions, critical/warning rule failures, contradictions, missing evidence, or duplicate indicators.
+The supported statuses are:
 
-### 20.1 Decision explanation
+- Strong Match
+- Acceptable Match
+- Weak Match
+- Model Disagreement
+- Uncertain Result
 
-The final decision retains supporting factors, opposing factors, rule results, model evidence, and escalation reasons so a reviewer can understand why the recommendation was made.
+Different predictions, low confidence, or materially divergent evidence can
+route a claim to manual review.
 
-## 21. Testing Strategy
+\---
 
-The current automated test suite contains 42 passing tests in the verified student environment.
+## 24\. OCR and Document Processing
 
-The test suite covers:
+The document service performs controlled file ingestion, hashing and OCR
+integration. Uploaded documents are associated with a claim and retain:
 
-- domain schema validation
-- API flows
-- card rendering
-- rule engine behavior
-- decision engine behavior
-- ML inference
-- document handling
-- authentication and ownership
-- persistence paths
+* document type;
+* original filename;
+* MIME type;
+* size;
+* SHA-256 hash;
+* upload time;
+* extraction output; and
+* verification status.
 
-### 21.1 Final adversarial test matrix
+The Windows runtime requires a working Tesseract installation for actual OCR
+execution. The application handles unavailable OCR by returning a controlled
+error rather than crashing.
 
-| Scenario | Expected behavior |
-|---|---|
-| Valid in-warranty claim with complete evidence | Likely Valid when model/rules support it |
-| Expired warranty | Rule evidence should oppose validity and may trigger review/rejection according to policy |
-| Missing mandatory document | Missing-document flag + manual review/escalation |
-| Serial mismatch | Integrity warning/escalation |
-| Contradictory dates | Contradiction flag + escalation |
-| Duplicate claim | Duplicate flag + escalation |
-| Unauthorized repair | Rule result according to policy |
-| Boundary date | Explicit policy evaluation |
-| Low-confidence model | Uncertain result / manual review |
-| Model disagreement | Manual review |
-| Reviewer override | Persisted override and audit entry |
+\---
 
-## 22. Security Considerations
+## 25\. Security Considerations
 
 Current controls include:
 
-- password hashing
-- expiring opaque sessions
-- authenticated claim access
-- claim ownership checks
-- upload size/type validation
-- secure generated storage names
-- SHA-256 document hashes
-- persistence rollback on failure
-- audit records
-- no external generative-AI API used for the final claim decision
+* Bearer-authenticated protected endpoints;
+* password hashing rather than plain-text passwords;
+* expiring opaque sessions;
+* ownership checks for customer claims;
+* file-size/type validation;
+* controlled storage filenames;
+* SHA-256 document hashing;
+* database persistence for audit evidence;
+* strict Pydantic models with forbidden extra fields;
+* no external generative-AI API used for final claim adjudication.
 
-Remaining security verification should include:
+Remaining hardening work for a production deployment includes stronger login
+rate limiting, production secret management and operational monitoring.
 
-- malformed/oversized files
-- path traversal attempts
-- unsupported content types
-- repeated login attempts
-- unauthorized claim access
-- duplicate documents across users
-- malformed model payloads
-- reviewer privilege boundaries
+\---
 
-## 23. Privacy Considerations
+## 26\. Privacy Considerations
 
-Claim documents can contain personal and purchase information. The implementation should therefore minimize stored data to what is necessary for evaluation, protect access through authentication and ownership checks, avoid exposing document contents through error messages, and maintain auditable access/decision records.
+The system stores only the data required for the claim workflow and provides
+explicit document records so access and evidence can be audited. Competition
+dataset records are synthetic. Real customer evidence should not be placed in
+the public repository.
 
-A production deployment should additionally define retention and deletion policies before handling real customer documents.
+The final decision engine is application logic. It does not send the claim to an
+external generative-AI service to obtain a final decision.
 
-## 24. Performance Considerations
+\---
 
-The SRS requires claim processing and both model predictions within five seconds under normal operating conditions. A final benchmark must measure the complete path rather than individual functions:
+## 27\. Testing Strategy
+
+The codebase includes automated tests covering:
+
+* domain schema validation;
+* API authentication and protected routes;
+* claim registration;
+* document ingestion;
+* card generation;
+* ML inference;
+* rule engine behavior;
+* decision engine behavior;
+* dataset/card fidelity.
+
+Current hardened test suite: **45 passing tests** in this working environment.
+
+The student's declared environment for the saved Python artifact is Python
+3.13.1 with scikit-learn 1.9.1. The final resubmission should rerun the full
+suite in that environment after the final local changes.
+
+\---
+
+## 28\. Test Cases Required for Final Demonstration
+
+The final demo/evidence set should include:
+
+### Case A — Valid claim
+
+* active warranty;
+* complete required evidence;
+* matching product identity;
+* covered fault;
+* no duplicate indicator;
+* model agreement if produced by the actual test.
+
+### Case B — Invalid claim
+
+Use a clear business-rule invalidation such as an expired warranty, excluded
+damage, or serial mismatch.
+
+### Case C — Manual review
+
+Use a genuine escalation condition such as missing evidence, low confidence,
+model disagreement or duplicate indication.
+
+### Case D — Boundary case
+
+Use a warranty or reporting deadline at or near its configured boundary and show
+the rule result.
+
+### Case E — Model disagreement
+
+Python and Teachable Machine must actually predict different classes. Show the
+confidence values and the resulting manual-review routing.
+
+\---
+
+## 29\. Project Limitations
+
+The project should be evaluated against the evidence actually produced.
+
+### Teachable Machine accuracy target
+
+The SRS specifies at least 85% accuracy on the unseen test set.
+
+The retained Teachable Machine Model A achieved:
+
+- 191 correct predictions out of 225
+- 84.8889% accuracy
+- 0.1111 percentage points below the stated 85% target
+
+This numeric requirement is therefore not fully met. The result is reported
+exactly and is not rounded upward.
+
+### Synthetic-data limitation
+
+The dataset is synthetic. Model performance measured on this dataset should
+not be treated as evidence of equivalent performance on real-world insurance
+claims.
+
+### Model-selection boundary
+
+The independent 225-card test set was retained for final evaluation. A separate
+validation experiment was used to compare Teachable Machine configurations:
+
+- Model A validation accuracy: 84.00%
+- Model B validation accuracy: 80.4444%
+
+Model B was not promoted to production.
+
+### UI and workflow scope
+
+The core claim-evaluation and decision pipeline is implemented and tested.
+Some broader SRS-facing dashboard, analytics, export and document-verification
+capabilities remain Partial or Pending. Only functionality supported by the
+retained implementation and evidence should be presented as complete.
+
+### Reproducibility boundary
+
+The core evaluation and evidence pipeline is documented through retained
+datasets, manifests, model artifacts, reports, scripts and validation commands.
+
+The browser-based Teachable Machine training process should not be described
+as fully reproducible from source code alone. The retained exported model
+artifact is the production evidence used for evaluation.
+
+\---
+
+## 30\. Future Enhancements
+
+Potential extensions after the competition include:
+
+* production-grade monitoring and anomaly detection;
+* richer reviewer work queues;
+* enterprise identity/SSO;
+* stronger OCR field extraction;
+* manufacturer-specific policy versioning;
+* analytics dashboards;
+* external object storage for documents;
+* controlled deployment with observability.
+
+These are deliberately separated from the competition-critical decision core.
+
+\---
+
+## 31\. Reproducibility and Evidence Artifacts
+
+Key deterministic artifacts include:
 
 ```text
-request
-→ persistence
-→ preprocessing
-→ Python inference
-→ card generation
-→ Teachable Machine inference
-→ rules
-→ decision
-→ persistence
+data/claims.csv
+ data/datasets/train.csv
+ data/datasets/validation.csv
+ data/datasets/test.csv
+
+data/claim\\\\\\\_cards/
+reports/card\\\\\\\_mapping.csv
+reports/card\\\\\\\_data\\\\\\\_manifest.csv
+reports/card\\\\\\\_fidelity\\\\\\\_audit.json
+reports/dataset\\\\\\\_statistics.json
+reports/data\\\\\\\_dictionary.csv
+reports/python\\\\\\\_model\\\\\\\_evaluation.json
+reports/python\\\\\\\_model\\\\\\\_evaluation.md
+reports/model\\\\\\\_comparison\\\\\\\_30\\\\\\\_template.csv
+static/tm\\\\\\\_test\\\\\\\_manifest.json
 ```
 
-**Benchmark evidence:** PENDING.
-
-## 25. Limitations
-
-1. The current model is trained on synthetic data.
-2. The committed 92.889% result does not establish real-world accuracy.
-3. Teachable Machine's final trained artifact and evaluation evidence are still pending.
-4. The current application does not yet cover every dashboard, export, monitoring and notification feature in the SRS.
-5. OCR quality depends on document quality and local Tesseract installation/configuration.
-6. The current browser-to-backend Teachable Machine integration must be hardened before production because a browser-supplied prediction should not be treated as cryptographically trusted evidence.
-
-## 26. Future Enhancements
-
-- stronger production-side verification of Teachable Machine outputs
-- production document storage and retention controls
-- richer monitoring and anomaly detection
-- full analytics/reporting/export suite
-- more diverse real or privacy-safe benchmark data
-- calibrated confidence analysis
-- expanded product-category policy library
-- reviewer workload analytics
-
-## 27. Final Evidence Checklist
-
-Complete these items before final submission:
-
-- [ ] Real Teachable Machine model exported and loaded
-- [ ] Teachable Machine training/validation/test evidence captured
-- [ ] Claim Summary Card training corpus generated with required mapping
-- [ ] Actual five-fold cross-validation metrics recorded
-- [ ] 30+ unseen claim comparison table completed
-- [ ] Final SRS traceability matrix reviewed against the running application
-- [ ] Administrator dashboard demonstrated
-- [ ] User dashboard demonstrated
-- [ ] Report generation demonstrated
-- [ ] Status tracking demonstrated
-- [ ] Required notifications demonstrated
-- [ ] Monitoring/anomaly behavior demonstrated or documented
-- [ ] Performance benchmark completed
-- [ ] Security test scenarios completed
-- [ ] Project report diagrams inserted
-- [ ] Screenshots added
-- [ ] Installation/execution/deployment instructions verified
-- [ ] Technical blog published and link added
-- [ ] Demonstration video recorded as `.mp4`
-- [ ] AI_USAGE.md finalized
-- [ ] Team contribution record finalized
-
-## 28. Source Repository
-
-Repository:
-
-`https://github.com/aptech-osogbo-assurex-team/AssureX-Claim-Engine`
-
-Final branch/commit details must be recorded here after final merge:
+Scripts:
 
 ```text
-Branch: TBD
-Final commit: TBD
-Deployment URL: TBD
-Demo video: TBD
-Technical blog: TBD
+src/data\\\\\\\_generation/generate\\\\\\\_claims.py
+src/cards/dataset.py
+src/cards/generator.py
+src/model\\\\\\\_training/train\\\\\\\_model.py
+scripts/build\\\\\\\_submission\\\\\\\_evidence.py
+scripts/build\\\\\\\_model\\\\\\\_comparison\\\\\\\_report.py
 ```
+
+\---
+
+## 32\. AI Tool Usage and Competition Integrity
+
+AI-assisted development is documented in `AI\\\\\\\_USAGE.md`.
+
+The team must be able to explain the submitted modules. AI assistance does not
+replace testing or understanding. The decision engine does not call an external
+generative-AI service to make the final claim decision.
+
+Any final change should follow the cycle:
+
+```text
+SRS requirement
+      ↓
+Implementation
+      ↓
+Test / inspect
+      ↓
+Evidence
+      ↓
+Documentation
+```
+
+\---
+
+## 33\. Final Submission Gate
+
+### Evidence completed
+
+- [x] Corrected Claim Summary Cards regenerated
+- [x] Card fidelity audit = PASS
+- [x] Teachable Machine retrained on corrected training cards
+- [x] Teachable Machine evaluated on 225 held-out test cards
+- [x] 30-case Python/Teachable Machine comparison generated
+- [x] Final report updated with retained Teachable Machine results
+- [x] Submission validator overall = PASS
+- [x] Full automated test suite = 45 passed
+
+### Requirement gap to report
+
+- [ ] Teachable Machine unseen-test accuracy ≥85%
+
+Measured result: 84.8889% (191/225)
+
+Gap: 0.1111 percentage points
+
+This requirement remains unresolved and must not be represented as a pass or
+rounded upward.
+
+### Remaining submission work
+
+1. Review the synchronized documentation.
+2. Review the final file set and remove temporary working files that are not
+   intended for submission.
+3. Confirm the required video, technical blog and deployment links.
+4. Run the final validation and test suite again before packaging.
+5. Create the final submission archive only after the review is clean.
+
+\---
+
+## 34\. Conclusion
+
+AssureX now has a coherent evidence-backed claim-decision pipeline covering
+structured claim data, corrected Claim Summary Cards, independently evaluated
+Python classification, retrained and evaluated Teachable Machine
+classification, configurable warranty rules, consistency checks, explainable
+decisions, and the documented 30-case model comparison.
+
+The resubmission hardening establishes traceable evidence for the corrected
+dataset split, Claim Summary Card fidelity, model artifacts, independent
+evaluation and claim-level model comparison.
+
+One SRS numeric requirement remains unmet: the Teachable Machine model achieved
+84.8889% accuracy on 225 independent unseen test cards, compared with the stated
+target of at least 85%. The gap is 0.1111 percentage points.
+
+That result is retained exactly and is not rounded upward. The report
+distinguishes implemented functionality, verified evidence, and quantitative
+requirements that remain unmet.
+
+\---

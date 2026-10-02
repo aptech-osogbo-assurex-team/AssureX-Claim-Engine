@@ -1,0 +1,58 @@
+{
+  "policy_id": "ASSUREX-HOME-APPLIANCES-001",
+  "product_category": "Home Appliance",
+  "coverage_duration_months": 24,
+  "warranty_start_conditions": [
+    "Warranty starts on the documented purchase date.",
+    "The product serial number must match registered purchase evidence."
+  ],
+  "covered_faults": [
+    "Manufacturing defect",
+    "Component failure",
+    "Motor malfunction",
+    "Compressor failure"
+  ],
+  "exclusions": [
+    "Water damage",
+    "Physical/drop damage",
+    "Unauthorized repair damage",
+    "Power surge (external)",
+    "Normal wear and tear"
+  ],
+  "claim_reporting_period_days": 30,
+  "repair_conditions": [
+    "Repairs should be performed by an authorized service centre.",
+    "Repair history must be disclosed during claim evaluation."
+  ],
+  "authorized_service_centre_required": true,
+  "replacement_conditions": [
+    "A previous replacement may require additional review and evidence."
+  ],
+  "grace_period_days": 0,
+  "mandatory_documents": [
+    ["receipt", "invoice"],
+    ["warranty_card"],
+    ["product_photo"],
+    ["serial_evidence"],
+    ["fault_evidence"]
+  ],
+  "hard_fail_rules": [
+    "Warranty expired beyond configured grace period.",
+    "Claim submission before purchase date.",
+    "Serial-number mismatch.",
+    "Excluded damage or fault.",
+    "Unauthorized repair where policy rejects it.",
+    "Possible duplicate claim."
+  ],
+  "warning_rules": [
+    "Missing required evidence.",
+    "Approaching warranty boundary.",
+    "Incomplete document extraction."
+  ],
+  "manual_review_rules": [
+    "Model disagreement.",
+    "Low model confidence.",
+    "Conflicting extracted serial/model information.",
+    "Unclear repair or replacement history."
+  ]
+}

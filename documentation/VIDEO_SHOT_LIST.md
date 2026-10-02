@@ -1,304 +1,205 @@
-# AssureX Demonstration Video — SRS-Aligned Shot List
+# AssureX Demonstration Video — Final Shot List
 
-> **Purpose:** This is the working shot list for the mandatory `.mp4` demonstration. Record only behavior that is actually implemented and tested. Do not narrate unfinished features as if they work.
+This document is the recording blueprint for the mandatory `.mp4` demonstration.
+Record only functionality that is actually working in the final resubmission.
 
-## 1. Opening — 20–30 seconds
+## 1. Opening — 10 to 20 seconds
 
-Show:
-
-- AssureX title screen
-- one-sentence problem statement
-- architecture diagram
+Show the AssureX title screen.
 
 Narration:
 
-> “AssureX is an AI-assisted warranty claim decision system. It combines claim evidence, a Python classification model, a separately trained Teachable Machine model, configurable warranty rules, and human review rather than relying on a single prediction.”
+> “AssureX combines structured claim evidence, two independent AI assessments,
+warranty rules and explainable human review into one warranty-claim decision
+pipeline.”
 
-## 2. User Authentication
-
-Show:
-
-- registration or login
-- successful login
-- authenticated application screen
-
-SRS coverage:
-
-- User registration/login
-
-## 3. Product and Warranty Registration
+## 2. Login / registration
 
 Show:
 
-- product creation
-- serial number
-- purchase date
-- warranty details
-- saved record
+- customer registration or login;
+- authenticated state.
 
-SRS coverage:
-
-- Product registration
-- Warranty registration
-- Warranty tracking
-
-## 4. Claim Creation
+## 3. Product and warranty
 
 Show:
 
-- new claim
-- claim ID
-- fault description/category
-- fault occurrence date
-- claim submission date
-- relevant repair/replacement information
+- product registration;
+- warranty record;
+- warranty start/end information.
 
-## 5. Evidence Upload
-
-Show at minimum:
-
-- receipt/invoice
-- warranty card
-- product image
-- serial-number evidence
-- fault evidence
-- repair report where applicable
-
-Show upload validation and stored documents.
-
-## 6. OCR and Verification
+## 4. Claim creation
 
 Show:
 
-- OCR extraction from a real sample document
-- extracted purchase date
-- invoice/receipt number
-- product/serial information
-- warranty information where available
-- user review/correction before final submission
+- claim ID;
+- product link;
+- fault description/category;
+- claim submission information.
 
-Do not claim verification is complete until the actual UI flow exists.
-
-## 7. Data Preprocessing
+## 5. Evidence upload
 
 Show:
 
-- normalized dates
-- derived product age
-- remaining warranty period
-- missing-document count
-- categorical/feature preparation
+- receipt/invoice;
+- warranty card;
+- product image;
+- serial evidence;
+- fault evidence.
 
-Briefly explain that preprocessing occurs before Python inference.
+## 6. OCR extraction
 
-## 8. Python Model Prediction
+Show a real document being processed.
+
+Show the extracted values.
+
+Then show the verification/correction step where available.
+
+Do not claim OCR succeeded if the local Tesseract installation is unavailable.
+
+## 7. Data preprocessing
+
+Show the transition from claim data to the feature/evidence representation.
+
+Explain that preprocessing produces derived fields used by the Python model and
+rules.
+
+## 8. Claim Summary Card
+
+Show the generated card.
+
+Important visual check:
+
+The card must show evidence only. Do **not** show model outputs or final decision
+inside the card itself.
+
+## 9. Python model
 
 Show:
 
-- predicted class
-- probabilities for all three classes
-- model name/version
-
-Required classes:
-
-- Valid Claim
-- Invalid Claim
-- Manual Review
-
-## 9. Claim Summary Card
-
-Generate and display the card.
-
-Explicitly point out that the card contains evidence only.
-
-It must **not** show:
-
-- Python prediction
-- Python confidence
-- Teachable Machine prediction
-- final decision
+- predicted class;
+- Valid Claim probability;
+- Invalid Claim probability;
+- Manual Review probability;
+- model version.
 
 ## 10. Teachable Machine
 
-Show:
-
-- actual exported Teachable Machine model loaded
-- the same claim's Summary Card classified
-- all three confidence values
-- predicted class
-- model version/identifier if available
-
-Do not simulate this step.
-
-## 11. Model Comparison
+Show the real exported model running on the Claim Summary Card.
 
 Show:
 
-```text
-Python class
-Python confidence
-TM class
-TM confidence
-Absolute confidence difference
-Consistency status
-```
+- predicted class;
+- Valid Claim probability;
+- Invalid Claim probability;
+- Manual Review probability.
 
-Demonstrate one agreement case and one disagreement case.
+## 11. Model comparison
 
-## 12. Warranty Rules
+Show:
+
+- Python class;
+- Teachable Machine class;
+- prediction match or mismatch;
+- confidence difference;
+- consistency status.
+
+## 12. Warranty rules
 
 Show the rule results.
 
-Demonstrate at least:
+At least one rule should visibly pass.
+If a negative case is being demonstrated, show the failed rule and explain why.
 
-- warranty expiry
-- serial mismatch
-- missing document
-- contradiction
-- duplicate claim
-- repair/policy condition
+## 13. Missing documents
 
-Explain that business rules are independent of the models.
+Show a case where a required document is missing.
 
-## 13. Final Decision
+The application should clearly identify the missing evidence.
 
-Show:
+## 14. Contradiction detection
 
-- Likely Valid
-- Likely Invalid
-- Manual Review Required
+Use a controlled synthetic case such as:
 
-Demonstrate how evidence changes the outcome.
+- claim date before purchase;
+- repair date before purchase; or
+- conflicting serial/model evidence.
 
-## 14. Decision Explanation
+Show the rule result.
 
-Show:
+## 15. Duplicate claim
 
-- supporting factors
-- opposing factors
-- rule failures
-- contradictions
-- missing documents
-- duplicate indicator
-- model comparison
+Show a controlled duplicate indicator or duplicate document hash.
 
-Narration:
+Explain that the duplicate signal contributes to escalation rather than being
+silently ignored.
 
-> “The final result is produced by application logic using model evidence and independent warranty/integrity evidence. It is not generated by an external generative-AI API.”
+## 16. Final decision
 
-## 15. Manual Review
+Show the deterministic final result and its explanation.
+
+Do not say that the AI alone “approved” the claim. Explain that the result comes
+from the combined model, rule and consistency evidence.
+
+## 17. Manual review
 
 Show:
 
-- review queue
-- escalated claim
-- reviewer comments
-- reviewer decision/override
-- audit history
+- manual-review routing;
+- reviewer comments;
+- reviewer approval/rejection or request for information;
+- retained original automated evidence.
 
-## 16. Claim Status Tracking
+## 18. Claim status
 
-Show:
+Show the claim moving through its relevant status states.
 
-- submission
-- evaluation
-- manual review or additional information
-- final state
+## 19. Administrator / reporting evidence
 
-## 17. User Dashboard
+Only show dashboard, analytics or report-generation features that are actually
+implemented and working in the final build.
 
-Show, once actually implemented:
+## 20. Required demonstration scenarios
 
-- registered products
-- active/expiring warranties
-- claims
-- pending actions
-- recent decisions
+The SRS requires the final recording to include:
 
-## 18. Administrator Dashboard
+### Valid claim
 
-Show, once actually implemented:
+Complete evidence and a valid warranty/business scenario.
 
-- total claims
-- valid claims
-- invalid claims
-- manual-review cases
-- pending claims
-- duplicates
-- model disagreements
-- confidence information
-- claim trends
+### Invalid claim
 
-## 19. Report Generation
+Clearly invalid warranty or evidence condition.
 
-Show:
+### Manual-review claim
 
-- downloadable claim report
-- evidence summary
-- warranty state
-- Python result
-- TM result
-- confidence comparison
-- rule results
-- contradictions
-- final recommendation
-- reviewer comments
+A genuine uncertainty/escalation case.
 
-## 20. Required Demonstration Cases
+### Tricky boundary case
 
-The SRS requires all of the following:
+A claim at or near the configured warranty/reporting boundary.
 
-### Case A — Valid Claim
+### Model-disagreement case
 
-Complete evidence, active warranty, consistent identifiers, supportive rules, model agreement.
-
-### Case B — Invalid Claim
-
-A clearly invalid policy/business scenario.
-
-### Case C — Manual Review
-
-Use missing evidence, low confidence, disagreement, duplicate indicator, or another valid escalation reason.
-
-### Case D — Tricky Boundary Case
-
-Example: warranty expiry/reporting deadline at or near the boundary. Show the exact rule result.
-
-### Case E — Model Disagreement
-
-Python and Teachable Machine predict different classes. Show that the system routes the case to manual review.
+Python and Teachable Machine actually predict different classes.
+Show the confidence values and manual-review routing.
 
 ## 21. Closing
 
-Show the final architecture and a brief summary:
+Narration:
 
-```text
-Evidence
-  ↓
-Two independent model views
-  ↓
-Warranty + integrity rules
-  ↓
-Consistency checks
-  ↓
-Explainable decision
-  ↓
-Human review when required
-```
+> “AssureX does not treat machine learning as the entire warranty decision. It
+combines independent model evidence with business rules, integrity checks and
+human review so that each recommendation has a traceable reason.”
 
-End with:
+## Final recording checklist
 
-> “AssureX is designed to make warranty decisions more consistent and traceable by combining machine-learning evidence with explicit business rules and human review.”
-
-## 22. Recording Checklist
-
-- [ ] Screen recording is readable
-- [ ] No passwords/secrets visible
-- [ ] Test data is synthetic or approved for demonstration
-- [ ] All required claims are prepared before recording
-- [ ] Teachable Machine is the real exported model
-- [ ] All confidence values shown are real outputs
-- [ ] No hard-coded demo answers
-- [ ] Timing remains within the final competition limit
-- [ ] `.mp4` produced
-- [ ] Final file checked before upload
+- [ ] No passwords or secrets visible
+- [ ] Only synthetic/approved demonstration data used
+- [ ] Real Teachable Machine model shown
+- [ ] No fabricated confidence values
+- [ ] All five required scenario types demonstrated
+- [ ] Card contains no model output or final decision
+- [ ] Manual review path shown
+- [ ] Final `.mp4` opens and plays correctly
+- [ ] Video link added to repository documentation

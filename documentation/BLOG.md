@@ -1,290 +1,584 @@
-# AssureX Claim Engine: Building a Warranty Claim Decision System Around Evidence, Not a Single Prediction
+# Building AssureX: From Warranty Claim Prediction to Evidence-Driven Decision Support
 
-## Introduction
+Warranty claims look simple until the evidence is examined closely.
 
-Warranty claims look simple from the outside: a customer reports a fault, submits proof of purchase, and expects the claim to be assessed. In practice, a claim can involve a receipt, warranty card, serial number, product photographs, fault evidence, repair records, dates, warranty conditions, and previous claims. A decision can become difficult when those sources disagree, when mandatory evidence is missing, or when the claim falls close to a policy boundary.
+A customer may have a product, a receipt, a warranty card, a serial number, a
+repair history and a description of a fault. The claim can still contain missing
+documents, inconsistent dates, conflicting product information, a duplicate
+submission or a condition that falls outside the warranty policy. A machine
+learning model can classify a claim, but it cannot by itself establish every one
+of those business facts.
 
-AssureX Claim Engine was designed for that problem. The goal is not merely to train a classifier that says “valid” or “invalid”. The more important engineering question is how to make a claim decision from several pieces of evidence while keeping the process explainable and testable.
+That observation became the central design principle of **AssureX Claim Engine**:
 
-Our central design principle became simple:
+> \\\*\\\*A model prediction is evidence, not the entire business decision.\\\*\\\*
 
-> **A model prediction is evidence. It is not the entire business decision.**
+AssureX combines a Python classification model, a separate Google Teachable
+Machine image model, a configurable warranty-rule engine, consistency checks,
+duplicate detection and a deterministic decision engine. The result is a system
+that can produce a recommendation while preserving the reasons and evidence
+behind it.
 
-This principle shaped the architecture of AssureX. A Python tabular classifier provides one model-based assessment. A separately trained Google Teachable Machine image model is intended to provide another assessment from a Claim Summary Card. A configurable warranty and integrity rule engine evaluates business conditions independently. A deterministic decision engine combines the evidence and can route uncertainty or disagreement to manual review.
+This article describes what we built, what went wrong during development, what
+we corrected, and how we prepared the system for the final competition evidence.
 
-This article describes the current engineering approach, the dataset, model development, Claim Summary Cards, model comparison, warranty rules, OCR integration, testing, security considerations, difficulties encountered, and the remaining evidence required for the final competition submission.
+\---
 
-## The Business Problem
+## The business problem
 
-A warranty department does not only need a prediction. It needs an answer that can be explained to a customer, service-centre employee, reviewer, or administrator.
+Warranty decisions require more than pattern recognition. A claim can be
+statistically similar to previously valid claims and still be invalid because
+the warranty expired. Conversely, a claim can have unusual characteristics and
+still deserve consideration because the evidence is complete and the warranty
+conditions are satisfied.
 
-Consider three cases.
+We therefore separated the problem into evidence categories.
 
-In the first case, the product is still within its warranty period, the serial number matches the evidence, the required documents are present, the fault is covered, and there is no duplicate indicator. The models may also agree.
+The first category is **structured claim evidence**: product details, dates,
+price, fault type, warranty period, repair history, document completeness and
+serial-number status.
 
-In the second case, the warranty has expired and the claim contains evidence that conflicts with the registered product information. Even a high model confidence should not erase the business evidence.
+The second category is **visual evidence**. The same underlying claim is turned
+into a Claim Summary Card and independently evaluated by Google Teachable
+Machine.
 
-In the third case, the warranty may still be active, but the two models disagree or a mandatory document is missing. The correct response is not to force a binary result. It is to request manual review.
+The third category is **business evidence**. Warranty policies determine whether
+a claim is within the coverage period, whether the fault is covered, whether
+required evidence exists and whether integrity rules are violated.
 
-This is why the AssureX architecture separates prediction from adjudication.
+The final category is **decision evidence**: agreement or disagreement between
+the two models, confidence difference, rule outcomes, duplicate indicators,
+contradictions and missing evidence.
 
-## Architecture: From Claim to Decision
+This separation gives the application a clearer responsibility boundary. Machine
+learning estimates. Rules validate business conditions. The decision engine
+adjudicates the combined evidence.
 
-The current architecture follows this flow:
+\---
 
-```text
-Claim + Supporting Evidence
-          |
-          +---------------------> Python preprocessing -> Python ML
-          |
-          +---------------------> Claim Summary Card -> Teachable Machine
-          |
-          +---------------------> Warranty / Integrity Rules
-          |
-          +---------------------> Duplicate / Missing / Contradiction Checks
-          |
-          +---------------------------------------------+
-                                                        |
-                                                 Evidence comparison
-                                                        |
-                                                  Decision Engine
-                                                        |
-                         +-------------------------------+------------------+
-                         |                               |                  |
-                   Likely Valid                    Likely Invalid    Manual Review
-```
+## The architecture
 
-The application uses strict Pydantic domain schemas so that products, warranties, claims, documents, repairs, predictions, rule results, and final decisions use a consistent contract. Persistence is provided through SQLite, and audit records preserve important decision information.
-
-The application also includes authentication and claim-ownership checks. This is important because the system is handling evidence that may contain purchase details or personal data.
-
-## Building the Dataset
-
-The current Python dataset contains 1,500 synthetic warranty claims divided among three classes:
-
-- Valid Claim
-- Invalid Claim
-- Manual Review
-
-The dataset uses a 70/15/15 split. With approximately 500 records per class, each partition contains 350 training, 75 validation, and 75 test records per class.
-
-Synthetic data makes it possible to build and test the system without using real customer information. It also makes it possible to deliberately generate difficult cases such as expired warranties, serial mismatches, contradictions, missing evidence, previous repairs, and different decision classes.
-
-However, synthetic data introduces an important limitation. When generated features are closely tied to the label-generation logic, a model can learn the synthetic rule structure more easily than it would learn a messy real-world distribution. Therefore, we treat the resulting accuracy as a baseline engineering measurement, not proof of real-world generalisation.
-
-The final Teachable Machine dataset must use the same underlying claim records in visual form. The Claim ID must remain mapped between the structured CSV representation and the corresponding card images. The training, validation, and test claims must remain separated so that test claims are not reused in training images.
-
-## Python Model Development
-
-The existing training pipeline compares multiple classical classifiers and selects a Random Forest classifier for the saved artifact.
-
-The current committed model metadata records a held-out test accuracy of 92.889% on the synthetic test partition. The confusion matrix is:
-
-| Actual \ Predicted | Valid | Invalid | Manual Review |
-|---|---:|---:|---:|
-| Valid Claim | 75 | 0 | 0 |
-| Invalid Claim | 0 | 68 | 7 |
-| Manual Review | 3 | 6 | 66 |
-
-These results are useful because the confusion matrix shows more than one headline number. In particular, some Invalid Claim cases move into Manual Review and some Manual Review cases are predicted as Invalid Claim or Valid Claim. That is exactly the type of behavior that makes class-wise metrics important.
-
-A five-fold cross-validation procedure has also been added to the training workflow. The actual fold-by-fold values still need to be generated and recorded for the final evidence package. We are deliberately not inserting invented numbers into the report or blog.
-
-## Why the Python Model Does Not Make the Final Decision
-
-A machine-learning model is good at identifying patterns in its feature representation. A warranty policy contains business constraints. Those are different things.
-
-For example, a model may see a pattern that resembles a valid claim, but the policy may say that the claim is outside the reporting window. Another claim may look invalid according to one representation while the supporting documents show a legitimate explanation.
-
-AssureX therefore treats the Python model as one evidence stream. The model is loaded from a saved artifact during claim evaluation. The application does not retrain the model while processing a claim.
-
-The model prediction includes the predicted class, probabilities for all three classes, the model name, model version, and timestamp.
-
-## The Claim Summary Card
-
-One of the most important design details in AssureX is the Claim Summary Card.
-
-The card converts a structured claim into a standardized visual representation containing evidence fields such as:
-
-- product age
-- warranty status
-- remaining warranty period
-- fault category
-- repair history count
-- receipt or invoice availability
-- warranty-card availability
-- serial-number status
-- missing-document indicators
-- damage type where available
-
-The card intentionally excludes the Python model prediction, Python confidence score, and final decision.
-
-This separation matters because the second model should not simply be shown the output of the first model. The purpose of the visual model is to provide an independent assessment of the same underlying claim information in a different representation.
-
-The current card generator is deterministic, reproducible, and supports visual variations for dataset generation.
-
-## Google Teachable Machine
-
-The SRS requires a separately trained Google Teachable Machine image classifier with the same three classes used by the Python model.
-
-The intended workflow is:
+The architecture is deliberately straightforward.
 
 ```text
-Common claim record
+Claim + Evidence
       |
-      +--> CSV/tabular representation --> Python model
+      +--> Structured features --> Python classifier
       |
-      +--> Evidence-only visual card --> Teachable Machine
+      +--> Evidence-only Card --> Teachable Machine
+      |
+      +--> Warranty/integrity rules
+      |
+      +--> Missing/duplicate/contradiction checks
+      |
+      +------------------------+
+                               |
+                        Decision Engine
+                               |
+              +----------------+----------------+
+              |                |                |
+          Likely Valid   Likely Invalid   Manual Review
 ```
 
-The browser integration in the application loads the real exported Teachable Machine model and maps its probabilities into the canonical model-prediction contract.
+The important part is what the architecture **does not** do. It does not call a
+generative AI API and ask it to decide whether a warranty claim is valid. The
+final decision is produced by deterministic application logic using the team's
+Python model, Teachable Machine result and rule evidence.
 
-The final trained Teachable Machine artifact is still a required competition step. It must be trained, exported, loaded into the application, and evaluated on unseen claims. We will not simulate this model or manufacture its confidence values.
+That makes the system easier to explain during evaluation and easier to audit.
 
-## Comparing the Two Models
+\---
 
-For each claim, AssureX compares:
+## Building the common dataset
 
-1. Python predicted class
-2. Teachable Machine predicted class
-3. whether the classes match
-4. the top-class confidence from each model
-5. the absolute confidence difference
-6. a consistency status
+The competition specification requires a common warranty-claim dataset with three
+classes:
 
-The consistency status can be:
+* Valid Claim
+* Invalid Claim
+* Manual Review
 
-- Strong Match
-- Acceptable Match
-- Weak Match
-- Model Disagreement
-- Uncertain Result
+Our dataset contains 1,500 synthetic claim records, 500 per class. The split is
+exactly:
 
-The thresholds are configurable. This matters because the comparison policy should be visible and adjustable rather than scattered across application code.
+```text
+Training      1,050
+Validation      225
+Testing        225
+```
 
-A disagreement is not treated as a problem to hide. It is a signal that the evidence needs additional human attention.
+and every split retains equal class representation.
 
-## Warranty and Integrity Rules
+The synthetic data intentionally contains features relevant to warranty
+assessment: purchase price, warranty duration, product age, remaining warranty,
+repair history, missing documents, fault type, fault coverage, serial-number
+match and date contradictions.
 
-The warranty-rule engine is independent of the machine-learning models. Policies are stored in configuration files so that product-category rules can be changed without rewriting the whole adjudication service.
+There is an important limitation here. Synthetic data can produce optimistic
+results when its feature-generation logic closely follows its labels. We
+therefore treat the 92.89% test result as a **synthetic held-out benchmark**, not
+as evidence that the application will achieve the same accuracy on real warranty
+claims.
 
-The rules cover areas such as warranty activity and expiry, proof of purchase, required documents, serial-number consistency, product/model consistency, reporting conditions, repairs, excluded damage, and date contradictions.
+That distinction matters more than a large headline accuracy number.
 
-Examples of contradiction checks include:
+\---
 
-- claim date before purchase date
-- fault date after claim submission
-- repair date before purchase
-- conflicting serial numbers
-- inconsistent product models
+## The first difficult lesson: the visual dataset has to be faithful
 
-The system also checks missing required documents and duplicate indicators. Uploaded documents receive a SHA-256 hash so that an identical file can be detected if it has already been associated with another claim.
+One of the most important defects we found during the resubmission audit was not
+a model issue. It was a data-representation issue.
 
-These rules are important because they provide business evidence that is separate from statistical model output.
+The Python model reads structured claim records. Teachable Machine reads Claim
+Summary Card images. The competition requirement is that these two representations
+must describe the **same underlying claim**.
 
-## The Final Decision Engine
+The first implementation did not do that faithfully.
 
-The final decision engine combines the evidence streams into one of three recommendations:
+The card conversion reconstructed a claim but left the submitted-document list
+and repair-history list empty. That meant a CSV record could say:
 
-- Likely Valid
-- Likely Invalid
-- Manual Review Required
+```text
+repair\\\_history\\\_count = 2
+missing\\\_document\\\_count = 0
+```
 
-A key part of the implementation is the escalation path. Low confidence, model disagreement, weak consistency, missing evidence, contradictions, duplicate indicators, and relevant rule failures can cause manual review instead of forcing a binary result.
+while its visual card could show no repair history and missing evidence.
 
-The final decision also records reasons, supporting factors, opposing factors, model evidence, rule results, contradictions, missing documents, and duplicate indicators.
+That is more serious than a formatting bug. It means the visual model could be
+trained on a different representation of the claim than the Python model.
 
-That makes it possible to answer a practical reviewer question:
+We fixed the conversion layer so that it reconstructs the same document
+availability and repair-history evidence before rendering the card.
 
-> **Why did the system reach this recommendation?**
+Then we regenerated the full card corpus:
 
-Instead of replying that “the AI said so”, the application can show the evidence that contributed to the result.
+```text
+Training images      2,100
+Validation images      225
+Testing images         225
+Total                  2,550
+```
 
-## OCR and Document Processing
+A deterministic audit checks the fields displayed on the card for all 1,500
+claims. The audit result is:
 
-Warranty claims frequently depend on documents. AssureX therefore includes secure document intake and OCR integration.
+```text
+Claims checked       1,500
+Field mismatches          0
+Result                  PASS
+```
 
-The document layer validates file size and type, stores the file using a controlled filename, computes a SHA-256 hash, and associates the document with the claim. OCR can use Tesseract for image/PDF text extraction and field parsing.
+This was a good example of the difference between implementation quality and
+decision quality. The code already worked. The evidence relationship was wrong.
 
-The final competition demonstration still needs to show realistic documents and the extracted-data verification step required by the SRS. The OCR library alone is not enough; the judges should be able to see where extracted information appears and how it is checked before it becomes decision evidence.
+\---
 
-## Authentication, Persistence, and Auditability
+## Claim Summary Cards
 
-The current application includes user registration/login, expiring opaque bearer sessions, claim-ownership checks, and relational persistence using SQLite.
+The Claim Summary Card is intentionally evidence-only.
 
-The database stores claim-related records such as products, warranties, documents, repairs, predictions, rule results, decisions, audit entries, and notifications.
+It contains things such as:
 
-This is important for reproducibility. A decision should not disappear when the page is refreshed. The application should preserve the evidence and the result associated with the claim.
+* Claim ID
+* product age
+* warranty status
+* remaining warranty
+* fault category
+* repair history count
+* receipt/invoice availability
+* warranty-card availability
+* serial-number status
+* missing documents
 
-Audit records are also part of accountability. Important actions such as evaluation and reviewer actions should remain traceable.
+It does **not** contain:
 
-## Testing and Difficulties Encountered
+* Python prediction
+* Python confidence
+* Teachable Machine prediction
+* Teachable Machine confidence
+* final decision
 
-The engineering build currently passes 42 automated tests on the team's Windows environment with Python 3.13.1 and scikit-learn 1.9.1.
+That design prevents direct label leakage. The visual classifier has to infer
+from the claim evidence representation rather than simply reading a precomputed
+answer from the card.
 
-The testing process exposed real portability problems that were fixed before the engineering checkpoint was committed.
+\---
 
-The first issue was that the Claim Summary Card renderer used a Linux-specific font path. That worked in the development environment but failed on Windows. The fix made font selection environment-aware.
+## Python model development
 
-The second issue was OCR availability. A test environment without Tesseract produced a structured OCR-availability error instead of silently pretending that text extraction had succeeded. The Windows environment was then configured to support the OCR path.
+We compared three candidate approaches:
 
-These failures were valuable because they demonstrated why “the test suite passed on my machine” is not enough. The project needed to pass in the actual student environment where it would be demonstrated.
+1. Logistic Regression
+2. Random Forest
+3. Gradient Boosting
 
-Another important limitation surfaced in the model itself: the synthetic dataset can produce strong results without proving real-world generalisation. That led us to focus on the entire decision system, not just on improving the headline accuracy.
+Model selection is performed on the validation split. The held-out test split is
+reserved for the final benchmark.
 
-## Security Considerations
+The selected model is Random Forest.
 
-Security in AssureX includes authentication, claim ownership, password hashing, upload validation, secure file naming, SHA-256 document hashing, persistence rollback, audit records, and controlled error handling.
+The reported evidence is:
 
-The final assessment should also include malformed file tests, unauthorized claim access, path traversal attempts, repeated login attempts, duplicate-document behavior, and reviewer privilege boundaries.
+```text
+Validation accuracy:          90.67%
+5-fold CV mean:               90.76%
+5-fold CV standard deviation:  1.72%
+Held-out test accuracy:      92.89%
+```
 
-A production deployment should also define document retention and deletion policies because warranty evidence can contain personal and purchase information.
+The test confusion matrix is:
 
-## What Still Needs to Be Proven
+```text
+                 Predicted
+               V      I      M
 
-A strong engineering checkpoint is not the same thing as complete competition evidence. The remaining work is therefore explicit.
+Actual V       75     0      0
+Actual I        0    68      7
+Actual M        3     6     66
+```
 
-First, the team must train and export the actual Teachable Machine model and capture its training, validation, and unseen-test evidence.
+The class-wise results show that Manual Review is the hardest of the three
+classes in the synthetic benchmark, with recall of 88.00%.
 
-Second, the Python five-fold cross-validation results must be generated and recorded rather than merely having the procedure in code.
+That result is useful because it tells us where errors remain instead of hiding
+them behind one overall accuracy figure.
 
-Third, at least 30 previously unseen claims should be evaluated through the dual-model comparison path and recorded with predictions, confidence values, agreement state, and final decision.
+\---
 
-Fourth, the remaining SRS application features—especially dashboards, reporting/export, full notification coverage, monitoring, and the complete status lifecycle—must be tested and documented.
+## Why Manual Review exists
 
-Finally, the demonstration video, technical report, and published technical blog must all describe the actual implementation. Documentation should follow evidence, not the other way around.
+A claim-processing system should not assume that every case can be classified
+cleanly.
 
-## Lessons Learned
+AssureX therefore has three outputs at the application level:
 
-The main lesson from AssureX is that building a machine-learning feature and building a decision system are different tasks.
+```text
+Likely Valid
+Likely Invalid
+Manual Review Required
+```
 
-A model can be accurate on a test set and still be the wrong place to put the final decision. The surrounding application has to know when evidence is missing, when models disagree, when a policy is violated, and when a human should review the case.
+Manual review is not a failure state. It is a deliberate safety mechanism for
+uncertainty and conflict.
 
-A second lesson is that reproducibility matters. Pinning the machine-learning runtime version to the version used to create the saved artifact reduces uncertainty around model loading.
+Examples include:
 
-A third lesson is that tests are most valuable when they find uncomfortable problems. The Windows font issue and Tesseract availability issue were not theoretical. They were concrete failures discovered before the engineering checkpoint was considered safe.
+* model disagreement;
+* low confidence;
+* missing required evidence;
+* duplicate-claim indicators;
+* contradictory dates;
+* serial-number conflicts;
+* warranty-rule failures that require human judgement.
 
-A fourth lesson is that synthetic evaluation must be interpreted carefully. Strong results can be useful while still being limited by the synthetic data distribution.
+The reviewer can make a decision and add comments, while the original automated
+evidence remains in the audit trail.
+
+\---
+
+## Warranty rules are not machine learning
+
+The warranty-rule engine is another important separation.
+
+Rules are stored in configuration rather than scattered through API handlers.
+The active policy file contains category-aware warranty logic and the submission
+package includes three standalone policy artifacts.
+
+Representative checks include:
+
+* warranty activity;
+* reporting deadline;
+* required documents;
+* covered faults;
+* excluded damage;
+* serial-number consistency;
+* model consistency;
+* claim date before purchase;
+* repair date before purchase;
+* unauthorized repairs;
+* previous replacement;
+* duplicate claim.
+
+The rule engine returns a result such as:
+
+```text
+rule\\\_id
+passed
+severity
+message
+```
+
+That means the final decision can explain not only what a model predicted, but
+also which business conditions passed or failed.
+
+\---
+
+## OCR and document processing
+
+The SRS requires document ingestion and extraction. AssureX therefore includes a
+document service with file validation, storage, SHA-256 hashing and OCR
+integration.
+
+A document record retains:
+
+```text
+Document type
+Filename
+MIME type
+Size
+SHA-256
+Upload time
+OCR/extraction output
+Verification status
+```
+
+This gives the application a place to record not just what someone uploaded,
+but what the system extracted from it and whether that extraction was verified.
+
+The practical limitation is that actual OCR depends on the Tesseract installation
+in the runtime environment. The application handles unavailable OCR with a
+controlled error instead of crashing.
+
+\---
+
+## Model comparison
+
+The most interesting part of AssureX is not running two models separately. It is
+comparing them.
+
+For every evaluated claim, the decision evidence can contain:
+
+```text
+Python class
+Python confidence for all three classes
+TM class
+TM confidence for all three classes
+Predicted-class match
+Top-class confidence difference
+Consistency status
+Rule results
+Missing documents
+Contradictions
+Duplicate indicator
+Final recommendation
+```
+
+The confidence difference is calculated as the absolute difference between the
+top-class probabilities from the two models.
+
+The system categorizes the comparison into:
+
+* Strong Match
+* Acceptable Match
+* Weak Match
+* Model Disagreement
+* Uncertain Result
+
+The key idea is that disagreement becomes a visible signal rather than something
+that is averaged away.
+
+\---
+
+\## The 30+ unseen-claim requirement
+
+The competition requires a separate comparison report containing at least 30 unseen test claims and detailed evidence for both models.
+
+The retained comparison report is `reports/model_comparison_30.csv`.
+
+The report contains Claim ID, actual class, Python prediction and confidences, Claim Summary Card filename, Teachable Machine prediction and confidences, prediction agreement, confidence difference, consistency status, warranty-rule result, missing documents, contradictions, duplicate indicator, final application decision, and disagreement explanation.
+
+The retained report contains 30 claims with 25/30 prediction agreements, or 83.33%.
+
+Consistency results: Strong Match 10, Weak Match 7, Uncertain Result 5, Acceptable Match 5, and Model Disagreement 3.
+
+Final decisions: 28 manual review required and 2 likely valid.
+
+The 30-case comparison is integration evidence. It demonstrates the interaction between the Python model, Teachable Machine, evidence checks, consistency logic and the final decision engine. It is not a substitute for the full independent 225-card Teachable Machine accuracy measurement.
+
+The final Teachable Machine measurement is 191 correct predictions out of 225 independent unseen test cards, or 84.8889% accuracy. The SRS target is at least 85%, so the measured result is 0.1111 percentage points below the stated target.
+
+These values are reported from the retained evidence. The result is not rounded or adjusted to satisfy the target.
+
+---
+## Security and privacy
+
+AssureX uses several practical controls in the current build.
+
+Authentication uses hashed passwords and expiring sessions. Protected claim
+endpoints verify ownership so a customer cannot simply access another
+customer's claim.
+
+Documents are hashed using SHA-256. File ingestion validates types and sizes and
+stores files under controlled names.
+
+Pydantic domain models are configured to reject unexpected fields, which reduces
+the chance of silent contract drift.
+
+The final decision is not delegated to a generative AI API. The SRS explicitly
+requires the final result to come from the team's models, warranty rules and
+application logic, and that is how the decision path is structured.
+
+The competition dataset is synthetic. Real personal customer evidence should not
+be committed to the public repository.
+
+\\---
+
+## Testing
+
+Testing was treated as part of implementation rather than a final ceremony.
+
+The hardened suite now contains 45 tests covering:
+
+\* domain schema validation;
+\* authentication and API protection;
+\* card rendering;
+\* ML inference;
+\* rule behavior;
+\* decision behavior;
+\* document ingestion;
+\* dataset/card fidelity.
+
+The test run in the current engineering environment is:
+
+```text
+45 passed
+```
+
+The saved Python artifact was trained with scikit-learn 1.9.1 and the project
+requirements pin that version. The final local verification should be repeated
+on the team's declared Python 3.13.1 / scikit-learn 1.9.1 environment after the
+final Teachable Machine and evidence changes.
+
+\---
+
+## What went wrong and what we learned
+
+The most valuable lessons were not about adding more code.
+
+### Lesson 1: a working feature can still be wrong evidence
+
+The Claim Card bug passed code-level thinking but failed evidence-level thinking.
+The important question was not “does it render?” but “does it represent the same
+claim?”
+
+### Lesson 2: one accuracy number is not enough
+
+A 92.89% test score is useful, but the confusion matrix and class-wise results
+show where the model actually makes mistakes.
+
+### Lesson 3: uncertainty must have a path
+
+A system that always returns Valid or Invalid can look simple while silently
+hiding uncertainty. Manual review makes uncertainty explicit.
+
+### Lesson 4: reproducibility matters
+
+The dataset split, card mapping, model artifact and evaluation scripts are all
+part of the evidence chain. A reviewer should be able to trace an image back to a
+claim ID and then back to the structured record.
+
+### Lesson 5: documentation should follow evidence
+
+
+
+The report and blog should describe what was measured, not what was intended.
+
+The final Teachable Machine measurement is therefore reported exactly:
+
+84.8889% (191/225) on the independent unseen test set, compared with the SRS
+
+target of at least 85%.
+
+
+
+The 0.1111 percentage-point gap is retained rather than rounded upward.
+
+\---
+
+## Limitations
+
+
+
+The most important limitation remains the use of synthetic data. Synthetic
+
+benchmarks are suitable for demonstrating the requested pipeline, but they do
+
+not prove production performance on real customers.
+
+
+
+The final Teachable Machine result is 84.8889% on 225 independent unseen test
+
+cards. This is 0.1111 percentage points below the stated SRS target of at least
+
+85%, so that numeric requirement remains unmet.
+
+
+
+The current application has a stronger core decision path than a complete
+
+enterprise product. Some dashboards, search/filtering, analytics, export and
+
+full document-verification flows remain incomplete.
+
+
+
+The 30-case model comparison is retained as integration evidence, but it is not
+
+a replacement for the full 225-card Teachable Machine accuracy evaluation.
+
+
+
+That is a deliberate trade-off for the competition build: preserve the integrity
+
+of the core decision system rather than implement a large number of shallow
+
+features that cannot be properly tested.
+
+\---
 
 ## Conclusion
 
-AssureX is being built as an evidence-driven warranty claim decision system rather than a single-model demo.
+AssureX is an example of a practical AI decision-support architecture in which
+models are only one part of the evidence.
 
-The current engineering checkpoint has a working Python classification path, canonical domain contracts, configurable rules, persistence, authentication, document intake, Claim Summary Card generation, model comparison logic, audit records, reviewer foundations, and 42 passing automated tests.
+The final structure is:
 
-The remaining work is not to make the project sound more complete than it is. The remaining work is to produce the actual Teachable Machine evidence, complete the high-value SRS workflows, demonstrate unseen cases, and then make the report, blog, and video mirror the verified system.
+```text
+Evidence
+  ↓
+Python model + visual model
+  ↓
+Model comparison
+  ↓
+Warranty / integrity rules
+  ↓
+Contradiction / duplicate / missing evidence checks
+  ↓
+Explainable decision
+  ↓
+Human review when necessary
 
-That discipline is important because the strongest claim AssureX can make is not that the AI is infallible. It is that the system knows how to combine evidence, detect uncertainty, explain its recommendation, and involve a human when the automated evidence is not sufficient.
 
----
+The hardened resubmission now has a traceable evidence chain from the corrected
+structured claims and Claim Summary Cards through the independent model
+evaluations and the retained 30-case comparison report.
 
-## Final publication checklist
+The Python model achieved 92.8889% accuracy on the independent 225-card test
+set. The retained Teachable Machine Model A achieved 84.8889% on the same
+independent test set. The Teachable Machine SRS target of at least 85% therefore
+remains unmet by 0.1111 percentage points.
 
-Before publishing this article, replace the following placeholders only with verified evidence:
+That result is reported exactly rather than rounded upward. Model B was not
+promoted because its validation result was lower than Model A's.
 
-- `[INSERT FINAL CROSS-VALIDATION METRICS]`
-- `[INSERT FINAL TEACHABLE MACHINE RESULTS]`
-- `[INSERT 30+ UNSEEN CLAIM COMPARISON SUMMARY]`
-- `[INSERT FINAL SCREENSHOTS]`
-- `[INSERT DEPLOYMENT DETAILS]`
-- `[INSERT FINAL BLOG / VIDEO LINKS]`
+The important engineering lesson is that a competition submission should make
+the evidence easy to audit. Dataset integrity, card fidelity, model artifacts,
+independent evaluation, comparison reports, automated validation and tests all
+form part of the final claim.
+
+The result is therefore presented as an evidence-backed competition prototype,
+with its implemented capabilities and remaining limitations stated explicitly.
+
+\---

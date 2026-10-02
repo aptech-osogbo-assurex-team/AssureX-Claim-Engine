@@ -1,0 +1,52 @@
+{
+  "policy_id": "ASSUREX-DEFAULT-001",
+  "product_category": "Other",
+  "coverage_duration_months": 24,
+  "warranty_start_conditions": [
+    "Warranty starts on the documented purchase date.",
+    "The registered product identity must be supported by evidence."
+  ],
+  "covered_faults": [
+    "Manufacturing defect",
+    "Component failure"
+  ],
+  "exclusions": [
+    "Water damage",
+    "Physical/drop damage",
+    "Unauthorized repair damage",
+    "Normal wear and tear"
+  ],
+  "claim_reporting_period_days": 30,
+  "repair_conditions": [
+    "Repair history must be disclosed and supported where applicable."
+  ],
+  "authorized_service_centre_required": true,
+  "replacement_conditions": [
+    "Previous replacement requires reviewer assessment."
+  ],
+  "grace_period_days": 0,
+  "mandatory_documents": [
+    ["receipt", "invoice"],
+    ["warranty_card"],
+    ["product_photo"],
+    ["serial_evidence"],
+    ["fault_evidence"]
+  ],
+  "hard_fail_rules": [
+    "Warranty expired beyond configured grace period.",
+    "Claim submission before purchase date.",
+    "Serial-number mismatch.",
+    "Excluded damage or fault.",
+    "Possible duplicate claim."
+  ],
+  "warning_rules": [
+    "Missing required evidence.",
+    "Approaching warranty boundary.",
+    "Incomplete document extraction."
+  ],
+  "manual_review_rules": [
+    "Model disagreement.",
+    "Low model confidence.",
+    "Conflicting evidence."
+  ]
+}

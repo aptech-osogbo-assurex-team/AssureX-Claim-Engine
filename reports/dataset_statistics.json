@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-09-29T14:08:33.186923+00:00",
+  "total_records": 1500,
+  "classes": {
+    "Invalid Claim": 500,
+    "Manual Review": 500,
+    "Valid Claim": 500
+  },
+  "splits": {
+    "train": {
+      "records": 1050,
+      "classes": {
+        "Invalid Claim": 350,
+        "Manual Review": 350,
+        "Valid Claim": 350
+      }
+    },
+    "validation": {
+      "records": 225,
+      "classes": {
+        "Invalid Claim": 75,
+        "Manual Review": 75,
+        "Valid Claim": 75
+      }
+    },
+    "test": {
+      "records": 225,
+      "classes": {
+        "Invalid Claim": 75,
+        "Manual Review": 75,
+        "Valid Claim": 75
+      }
+    }
+  },
+  "claim_ids_unique": true
+}

@@ -1,0 +1,30 @@
+field,description
+claim_id,Unique claim identifier.
+product_name,Product name.
+category,Product category used by the warranty policy and model.
+brand,Product manufacturer/brand.
+model_number,Product model identifier.
+serial_number,Registered product serial number.
+retailer,Retailer recorded for the purchase.
+purchase_date,Purchase date in ISO date format.
+purchase_price,Purchase price in the dataset currency units.
+warranty_duration_months,Nominal warranty duration.
+warranty_end_date,Calculated warranty end date.
+claim_date,Claim submission date.
+product_age_days,Days between purchase and claim submission.
+remaining_warranty_days,Days remaining in warranty at claim submission.
+fault_type,Reported fault category.
+fault_covered,Whether the generated fault is covered by the scenario.
+repair_history_count,Number of previous repair events.
+serial_number_entered,Serial number supplied by claimant.
+serial_number_match,Whether entered and registered serial numbers match.
+documents_provided,Comma-separated document types represented by the scenario.
+missing_document_count,Number of mandatory document groups missing.
+claim_date_before_purchase,Contradiction flag derived from claim and purchase dates.
+repair_date_before_purchase,Contradiction flag derived from repair and purchase dates.
+class_label,"Target class: Valid Claim, Invalid Claim, or Manual Review."
+fault_occurrence_date,Dataset field.
+repair_date,Representative repair date when repair history exists.
+warranty_boundary_proximity,Absolute days from the warranty boundary.
+has_partial_documents,Indicator that some but not all mandatory documents are present.
+split,"Dataset partition: train, validation, or test."

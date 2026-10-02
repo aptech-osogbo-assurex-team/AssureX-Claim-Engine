@@ -1,234 +1,171 @@
-# AssureX Claim Engine — Engineering Handoff
+# AssureX Claim Engine — Resubmission Handoff
 
-_Last updated: 2026-09-29_
+## Repository
 
-## 1. Repository
-
-GitHub repository:
 `https://github.com/aptech-osogbo-assurex-team/AssureX-Claim-Engine`
 
-Current stable branch:
-`main`
+## Git baseline
 
-Current stable commit:
-`335019d feat: establish AssureX claim decision pipeline`
+The verified engineering baseline on GitHub `main` is:
 
-The engineering checkpoint has been pushed to GitHub `main`.
+* `335019d` — `feat: establish AssureX claim decision pipeline`
+* `8352490` — `docs: add submission documentation foundation`
 
-## 2. Verified Environment
+The reviewed competition submission ZIP was based on `4333210` and contained the
+exported Teachable Machine model.
 
-Student machine:
-- OS: Windows
-- Python: `3.13.1`
-- scikit-learn: `1.9.1`
+## Hardened changes in this working package
 
-The saved model artifact was trained under scikit-learn `1.9.1`, and the repository now pins that version.
+* corrected CSV → Claim Summary Card fidelity;
+* regenerated all 2,550 cards;
+* generated explicit train/validation/test CSV artifacts;
+* generated Claim ID → image mapping;
+* generated data dictionary and dataset statistics;
+* generated card-fidelity audit: 1,500 claims, 0 mismatches;
+* added three standalone warranty policy files;
+* generated a Python model evaluation report;
+* added browser batch evaluation for the real Teachable Machine model;
+* added a 30+ model-comparison report generator;
+* added final submission validator;
+* refreshed the project report, blog, video plan and resubmission documentation.
 
-## 3. Test Status
+## Verified Python evidence
 
-Full suite on the student's machine:
+* Dataset: 1,500 synthetic claims
+* Training: 1,050
+* Validation: 225
+* Test: 225
+* Test accuracy: 92.89%
+* Five-fold CV mean: 90.76%
+* Five-fold CV std: 1.72%
+* Hardened working test suite: 45 passed
 
-`42 passed, 1 warning`
+The saved classifier artifact remains the original scikit-learn 1.9.1 artifact.
+The package requirements pin scikit-learn 1.9.1.
 
-The remaining warning is a Starlette/httpx deprecation warning from the installed test-client stack. It is non-blocking; do not destabilize the build just to remove it unless there is a clear safe fix.
+## Current evidence status
 
-## 4. Engineering Checkpoint Implemented
+The major resubmission engineering work is complete.
 
-The `335019d` checkpoint established:
 
-- canonical domain schemas
-- authentication/session handling
-- SQLite persistence
-- configurable warranty policies/rules
-- rule engine
-- deterministic decision engine
-- existing Random Forest ML inference adapter
-- model metadata/version tracking
-- OCR/document intake layer
-- secure document hashing/storage
-- Claim Summary Card generation
-- Teachable Machine browser integration hook
-- duplicate-claim detection
-- claim state/notification workflow
-- reviewer override/audit trail support
-- FastAPI application
-- automated tests
 
-## 5. Important Truth About Current ML Evidence
+The corrected Claim Summary Cards were regenerated and audited against the
 
-Current Python ML baseline:
-- dataset: 1,500 synthetic claims
-- classes: Valid Claim / Invalid Claim / Manual Review
-- held-out test accuracy: `92.89%`
-- confusion matrix and class-wise results exist in the engineering work
+structured claims with 0 field mismatches. The dataset split and test-set
 
-Important limitation:
-`92.89%` is a result on the synthetic held-out dataset. It is NOT evidence of 92.89% real-world warranty-claim accuracy.
+integrity artifacts are retained.
 
-Cross-validation code has been added to the training pipeline, but actual CV results still need to be generated and documented as evidence.
 
-## 6. Current Documentation Artifacts
 
-Working documentation drafts created locally:
+Teachable Machine Model A was retrained using the corrected 2,100-card training
 
-- `PROJECT_REPORT.md`
-- `BLOG.md`
-- `VIDEO_SHOT_LIST.md`
+set, with 700 cards per class. The independent test set contains 225 cards,
 
-The intended repository location is:
+with 75 cards per class.
 
-```text
-documentation/
-├── PROJECT_REPORT.md
-├── BLOG.md
-└── VIDEO_SHOT_LIST.md
-```
 
-A documentation branch was created:
-`docs/submission-documentation`
 
-The documentation files are currently copied into that branch's `documentation/` directory but have not yet been committed/pushed as a documentation commit at the time this handoff was created.
+The final retained Teachable Machine result is:
 
-## 7. SRS-Critical Remaining Work
 
-### Highest priority
 
-1. Real Google Teachable Machine model
-   - Train the three required classes.
-   - Export the actual model.
-   - Place the exported model under the application's expected Teachable Machine static directory.
-   - Preserve training/validation/test evidence.
+\- 191/225 correct predictions
 
-2. Enforce evidence-driven evaluation
-   - The final decision path should be based on persisted claim/evidence records rather than arbitrary client-supplied decision JSON.
-   - Preferred flow:
+\- 84.8889% accuracy
 
-```text
-registration
-→ claim creation
-→ document/evidence upload
-→ OCR/extraction
-→ verification
-→ persisted claim
-→ Claim Summary Card
-→ Python model
-→ Teachable Machine
-→ warranty/integrity rules
-→ model/rule consistency
-→ final decision
-→ explanation/audit
-→ manual review when required
-```
+\- SRS target: at least 85%
 
-3. Produce actual evaluation evidence
-   - five-fold CV metrics
-   - held-out test metrics
-   - class-wise precision/recall/F1
-   - confusion matrix
-   - 30+ unseen claim comparisons between Python and Teachable Machine
-   - model agreement/disagreement and confidence-difference evidence
+\- Gap: 0.1111 percentage points below the target
 
-4. Final SRS audit
-   - check every functional and non-functional requirement
-   - verify screenshots/demo evidence
-   - verify security/privacy/error handling
-   - verify dashboards/search/reporting/export/deployment requirements
-   - verify final source tree contents
 
-5. Mandatory presentation video
-   - `.mp4` is mandatory
-   - use `VIDEO_SHOT_LIST.md` as the recording checklist
 
-6. Technical blog
-   - minimum 2,000 words
-   - publish externally
-   - add published link to project documentation and repository
+The result is retained exactly and is not rounded upward.
 
-7. Final report
-   - update `PROJECT_REPORT.md` with only verified final results, screenshots, metrics, links, and limitations
 
-## 8. Documentation Principles
 
-Never claim an SRS requirement is complete unless the feature exists and has been tested or otherwise demonstrated.
+Model A validation accuracy was 84.00%. A separate Model B experiment achieved
 
-Use these labels while the work is incomplete:
-- Implemented
-- Partial
-- Pending
+80.4444% on validation and was not promoted.
 
-Do not invent:
-- Teachable Machine accuracy
-- cross-validation scores
-- unseen-claim results
-- deployment URLs
-- screenshots
-- reviewer outcomes
-- performance measurements
 
-## 9. Git Discipline
 
-Current stable point:
-`335019d`
+The retained 30-case comparison report is:
 
-Do not rewrite or amend the stable engineering commit unless a real defect requires it.
+`reports/model_comparison_30.csv`
 
-Prefer focused commits, for example:
 
-```text
-docs: add submission documentation foundation
-feat: integrate real teachable machine model
-feat: enforce evidence-driven claim evaluation
-chore: record model evaluation evidence
-fix: close final SRS workflow gap
-```
 
-Before every commit:
 
-```bash
-git status
-git diff --check
-py -m pytest -q
-```
 
-Never commit generated runtime artifacts such as:
 
-```text
-data/assurex.db
-data/uploads/
-static/cards/
-__pycache__/
-.pytest_cache/
-```
 
-## 10. Immediate Next Action
 
-The engineering checkpoint is already safely on `main`.
 
-The next working branch is:
+It contains 30 claims, with 25/30 prediction agreements (83.33%), 28 final
 
-`docs/submission-documentation`
+manual-review decisions and 2 likely-valid decisions.
 
-Immediate documentation action:
 
-1. Stage the three documentation files.
-2. Inspect the staged diff.
-3. Run any relevant documentation checks.
-4. Commit as a separate documentation commit.
 
-Then return to the SRS-critical implementation/evidence path, with Teachable Machine as the first major remaining item.
+The automated submission validator passes all required checks, and the complete
 
-## 11. If Starting in a New Chat
+Python test suite passes with 45 tests passed and one dependency deprecation
 
-Start with this exact message:
+warning.
 
-> AssureX handoff: GitHub repo `aptech-osogbo-assurex-team/AssureX-Claim-Engine`. Stable `main` commit is `335019d` (`feat: establish AssureX claim decision pipeline`). Student environment is Python 3.13.1 with scikit-learn 1.9.1. Full test suite is 42 passed, 1 warning. Read `documentation/HANDOFF.md` and continue from the Immediate Next Action. Do not rewrite the architecture. Treat the SRS as the source of truth and distinguish implemented work from pending evidence.
 
-## 12. SRS Source-of-Truth Reminder
 
-The AssureX SRS requires the team to design, build, test, document, deploy, and demonstrate the complete application. It explicitly requires a Project Report, public GitHub source code, a mandatory `.mp4` demonstration video, a 2,000+ word Technical Blog, AI tool usage declaration, and team contribution record.
+## Remaining submission work
 
-The video must demonstrate the end-to-end claim workflow and include valid, invalid, manual-review, tricky-boundary, and model-disagreement cases.
 
-The technical blog must discuss the business problem, architecture, dataset, Python model, Teachable Machine, Claim Summary Card, model comparison, warranty rules, OCR, difficulties, model errors/disagreement cases, testing, security, limitations, lessons learned, and future enhancements.
 
-The source submission is expected to include datasets, model artifacts, card images, mappings, policy/rule files, OCR/document-processing files, tests, sample claims, documentation, screenshots/reports, and configuration as applicable.
+The remaining work is submission preparation rather than rebuilding the core
+
+model pipeline:
+
+
+
+1\. Review and synchronize the remaining documentation.
+
+2\. Remove temporary files and confirm the final repository file set.
+
+3\. Confirm the mandatory MP4 demo, technical blog and deployment/submission links.
+
+4\. Run `scripts/validate\\\_submission.py` again on the final file set.
+
+5\. Run `py -m pytest -q` again on the final file set.
+
+6\. Create the clean final submission archive.
+
+
+
+The Teachable Machine accuracy requirement remains an explicitly documented
+
+0.1111-percentage-point gap. Do not round 84.8889% to 85%, alter the retained
+
+test set, or change the reported evidence merely to make the requirement appear
+
+satisfied.
+
+## Integrity rule
+
+Never fabricate:
+
+* TM accuracy;
+* model disagreement results;
+* confidence values;
+* reviewer outcomes;
+* screenshots;
+* deployment URLs.
+
+## New-chat restart
+
+> AssureX resubmission handoff: repository
+> `aptech-osogbo-assurex-team/AssureX-Claim-Engine`. Stable engineering baseline
+> is `335019d`; documentation baseline is `8352490`; submitted ZIP was reviewed
+> from `4333210`. Resubmission hardening corrected CSV→Claim Summary Card
+> fidelity, regenerated 2,550 cards with a 0-mismatch audit, added split/mapping
+> evidence, three policy artifacts, Python evaluation reporting, TM batch
+> evaluation tooling and a 30+ comparison generator. Read
+> `documentation/HANDOFF.md` and continue from the Critical remaining action.
+

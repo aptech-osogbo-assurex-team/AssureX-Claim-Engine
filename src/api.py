@@ -73,10 +73,12 @@ app = FastAPI(title="AssureX Claim Engine", version="1.0.0")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STATIC_ROOT = PROJECT_ROOT / "static"
+DATA_ROOT = PROJECT_ROOT / "data"
 CARD_ROOT = STATIC_ROOT / "cards"
 CARD_ROOT.mkdir(parents=True, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=STATIC_ROOT), name="static")
+app.mount("/data", StaticFiles(directory=DATA_ROOT), name="data")
 templates = Jinja2Templates(directory=str(PROJECT_ROOT / "templates"))
 
 predictor = PythonClaimPredictor(

@@ -98,7 +98,7 @@ Run:
 python -m pytest -q
 ```
 
-The current repository test suite passes with 41 tests. The test environment may display scikit-learn version warnings if the runtime version does not match the 1.9.1 artifact version; `requirements.txt` pins scikit-learn to 1.9.1 for deployment/reproduction.
+The hardened repository test suite contains 45 automated tests. The saved Python artifact was trained under scikit-learn 1.9.1, and `requirements.txt` pins scikit-learn to 1.9.1 for reproduction.
 
 ## Important engineering rule
 
@@ -110,4 +110,14 @@ AI-assisted development is disclosed in [`AI_USAGE.md`](AI_USAGE.md). AI-generat
 
 ## Competition status
 
-The current build is a real implementation baseline, not a claim that every SRS feature is complete. Before submission, the team should separately verify the remaining competition evidence/workflow requirements, especially Teachable Machine training/validation evidence, reviewer override flow, notifications, dashboards/reporting, monitoring and deployment evidence.
+The current build is a real implementation baseline, not a claim that every SRS feature is complete. Core resubmission evidence has been verified, including corrected Claim Summary Cards, the Python model evaluation, Teachable Machine Model A evaluation, model comparison evidence, submission validation and automated tests. Remaining competition work is limited to final presentation/submission items and any broader workflow features explicitly required by the competition.
+
+## Resubmission evidence
+
+- [Project Report](documentation/PROJECT_REPORT.md)
+- [Technical Blog](documentation/BLOG.md)
+- [Video Shot List](documentation/VIDEO_SHOT_LIST.md)
+- [Submission Checklist](documentation/SUBMISSION_CHECKLIST.md)
+- [TM Retraining and Evaluation](documentation/TM_RETRAIN_AND_EVALUATE.md)
+- [Python Model Evaluation](reports/python_model_evaluation.md)
+- [Card Fidelity Audit](reports/card_fidelity_audit.md)

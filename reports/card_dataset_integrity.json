@@ -1,0 +1,12 @@
+{
+  "claim_records": 1500,
+  "card_counts": {
+    "train": 2100,
+    "validation": 225,
+    "test": 225
+  },
+  "training_card_variations_per_claim": 2,
+  "validation_variations_per_claim": 1,
+  "test_variations_per_claim": 1,
+  "generated_at": "2026-09-29T14:08:55.069496+00:00"
+}

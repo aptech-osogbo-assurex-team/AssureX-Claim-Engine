@@ -83,11 +83,23 @@ def _base_record(claim_idx: int, purchase_date: date, warranty_months: int,
 
 
 def _finalize(rec: dict) -> dict:
-    """Attach repair_date and derive both contradiction flags from real dates,
-    so every flag in the CSV is verifiable against the date columns."""
+    """Attach evidence dates and derive contradiction flags from real dates.
+
+    The synthetic fault occurrence date is generated before claim submission so
+    the reporting-deadline rule can be evaluated from an explicit dataset field.
+    """
     purchase = date.fromisoformat(rec["purchase_date"])
     claim = date.fromisoformat(rec["claim_date"])
     repair_before_purchase_intended = bool(rec["repair_date_before_purchase"])
+
+    if claim >= purchase:
+        fault_window = max((claim - purchase).days, 1)
+        days_before_claim = min(7, fault_window)
+        fault_date = claim - timedelta(days=days_before_claim)
+    else:
+        # Preserve deterministic generation for pre-purchase contradiction cases.
+        fault_date = claim - timedelta(days=1)
+    rec["fault_occurrence_date"] = fault_date.isoformat()
 
     if repair_before_purchase_intended:
         repair = purchase - timedelta(days=random.randint(1, 90))
